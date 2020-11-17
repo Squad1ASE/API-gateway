@@ -16,49 +16,50 @@ import time
 from celery import Celery
 from flask_mail import Message, Mail
 
-import connexion
+import connexion, logging
 
 
 mail = None
 
         
 def create_app():
-    app = Flask(__name__)
-    app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
-    app.config['SECRET_KEY'] = 'ANOTHER ONE'
-    #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@postgres:5432/postgres'
-    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservation.db'
+    logging.basicConfig(level=logging.INFO)
     app = connexion.App(__name__)
     app.add_api('swagger.yml')
+    #app = Flask(__name__)
+    application = app.app
+    application.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
+    application.config['SECRET_KEY'] = 'ANOTHER ONE'
+    #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@postgres:5432/postgres'
+    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    application.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    application.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservation.db'
 
-    
     # Flask-Mail configuration
-    app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'gooutsafe1@gmail.com'
-    app.config['MAIL_PASSWORD'] = 'Admin123.'
-    app.config['MAIL_DEFAULT_SENDER'] = 'gooutsafe@gmail.com'
+    application.config['MAIL_SERVER'] = 'smtp.googlemail.com'
+    application.config['MAIL_PORT'] = 587
+    application.config['MAIL_USE_TLS'] = True
+    application.config['MAIL_USERNAME'] = 'gooutsafe1@gmail.com'
+    application.config['MAIL_PASSWORD'] = 'Admin123.'
+    application.config['MAIL_DEFAULT_SENDER'] = 'gooutsafe@gmail.com'
+
     for bp in blueprints:
-        app.register_blueprint(bp)
+        application.register_blueprint(bp)
         bp.app = app
 
-    db.init_app(app)
-    login_manager.init_app(app)
+    db.init_app(application)
+    login_manager.init_app(application)
     try:
-        db.create_all(app=app)
+        db.create_all(app=application)
     except Exception as e:
         print(e)
 
 
     # TODO THIS SECTION MUST BE REMOVED, ONLY FOR DEMO
     # already tested EndPoints are used to create examples
-    app.config['WTF_CSRF_ENABLED'] = False
+    application.config['WTF_CSRF_ENABLED'] = False
 
-    with app.app_context():
+    with application.app_context():
         
         q = db.session.query(User).filter(User.email == 'admin@admin.com')
         adm = q.first()
@@ -103,11 +104,11 @@ def create_app():
 
         
 
-    app.config['WTF_CSRF_ENABLED'] = True
+    application.config['WTF_CSRF_ENABLED'] = True
 
     
 
-    return app
+    return application
 
 def make_celery(app):
     celery = Celery(

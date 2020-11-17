@@ -7,15 +7,15 @@ servers:
 - url: /
 paths:
 
-  /users/reservation_list: 
+  /reservation/customers/all: 
     get:
       tags:
-      - Restaurants
-      summary: Get all restaurants
-      operationId: views.users.reservation_list #app.get_restaurants
+      - Reservation list customers
+      summary: Get all reservations made by the customer
+      operationId: monolith.views.customers.get_reservation_list #app.get_restaurants
       responses:
         200:
-          description: Return all restaurants
+          description: Return all reservations made by the customer
           content:
             application/json:
               schema:
@@ -24,74 +24,49 @@ paths:
                   pets:
                     type: array
                     items:
-                      $ref: '#/components/schemas/User'
-
-
-
-#  /restaurants/{restaurant_id}:
-#    get:
-#      tags:
-#      - Restaurants
-#      summary: Get a single restaurant
-#      operationId: app.get_restaurant
-#      parameters:
-#      - name: restaurant_id
-#        in: path
-#        description: Restaurant's Unique identifier
-#        required: true
-#        schema:
-#          pattern: ^[a-zA-Z0-9-]+$
-#          type: string
-#      responses:
-#        200:
-#          description: Return restaurant
-#          content:
-#            application/json:
-#              schema:
-#                $ref: '#/components/schemas/Restaurant'
-#        404:
-#          description: Restaurant does not exist
-#          content: {}
-#components:
-#  schemas:
-#    Restaurant:
-#      required:
-#      - name
-#      - likes
-#      - lat
-#      - lon
-#      - phone
-#      type: object
-#      properties:
-#        id:
-#          type: integer
-#          description: Unique identifier
-#          readOnly: true
-#          example: 123
-#        name:
-#          maxLength: 100
-#          minLength: 1
-#          type: string
-#          description: Restaurant's name
-#          example: "My Pizza Restaurant"
-#        likes:
-#          minLength: 1
-#          type: integer
-#          description: Restaurant Rating
-#          example: 42
-#        lat:
-#          type: number
-#          description: Restaurant Latitude
-#          example: 42.42
-#        lon:
-#          type: number
-#          description: Restaurant Longitude
-#          example: 42.42
-#        phone:
-#          type: string
-#          minLength: 5
-#          maxLength: 50
-#          description: Restaurant Phone Number
-#          example: "050123456"
+                      $ref: '#/components/schemas/Reservation'
+        401:
+          description: User not logged
+          content: {}
+  
+  #/reservation/owners/all
+  #/
+    
+components:
+  schemas:
+    Reservation:
+      required:
+      - booker_id
+      - restaurant_id
+      - table_id
+      - date
+      - cancelled
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier
+          readOnly: true
+          example: 123
+        booker_id:
+          type: integer
+          readOnly: true
+          example: 123
+        restaurant_id:
+          type: integer
+          readOnly: true
+          example: 123
+        table_id:
+          type: integer
+          readOnly: true
+          example: 123
+        date:
+          type: date
+          readOnly: true
+          example: "12/10/2020 12:00"
+        cancelled:
+          type: boolean
+          readOnly: false
+          example: false
        
   

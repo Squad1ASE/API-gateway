@@ -5,6 +5,9 @@ from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.orm import backref
 from enum import Enum
 import time
+from sqlalchemy.ext.declarative import declarative_base
+
+db = declarative_base()
 
 
 
@@ -82,6 +85,10 @@ class User(db.Model):
 
     def get_id(self):
         return self.id
+
+    def serialize(self):
+        return dict([(k,v) for k,v in self.__dict__.items() if k[0] != '_'])
+
 
 
 class Restaurant(db.Model):
