@@ -16,6 +16,9 @@ import time
 from celery import Celery
 from flask_mail import Message, Mail
 
+import connexion
+
+
 mail = None
 
         
@@ -24,9 +27,13 @@ def create_app():
     app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
     app.config['SECRET_KEY'] = 'ANOTHER ONE'
     #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@postgres:5432/postgres'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///reservation.db'
+    app = connexion.App(__name__)
+    app.add_api('swagger.yml')
+
     
     # Flask-Mail configuration
     app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
@@ -105,10 +112,10 @@ def create_app():
 def make_celery(app):
     celery = Celery(
         app.import_name,
-        broker=os.environ['CELERY_BROKER_URL'],
-        backend=os.environ['CELERY_BACKEND_URL']
-        #backend='redis://localhost:6379',
-        #broker='redis://localhost:6379'
+        #broker=os.environ['CELERY_BROKER_URL'],
+        #backend=os.environ['CELERY_BACKEND_URL']
+        backend='redis://localhost:6379',
+        broker='redis://localhost:6379'
     )
     celery.conf.update(app.config)
     celery.conf.beat_schedule = {'unmark-negative-users': {

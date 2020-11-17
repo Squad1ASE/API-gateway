@@ -1,0 +1,97 @@
+openapi: 3.0.1
+info:
+  title: Booking Service API
+  description: Reservation and Seat from GoOutSafe with Microservices
+  version: "0.1"
+servers:
+- url: /
+paths:
+
+  /users/reservation_list: 
+    get:
+      tags:
+      - Restaurants
+      summary: Get all restaurants
+      operationId: views.users.reservation_list #app.get_restaurants
+      responses:
+        200:
+          description: Return all restaurants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+
+
+#  /restaurants/{restaurant_id}:
+#    get:
+#      tags:
+#      - Restaurants
+#      summary: Get a single restaurant
+#      operationId: app.get_restaurant
+#      parameters:
+#      - name: restaurant_id
+#        in: path
+#        description: Restaurant's Unique identifier
+#        required: true
+#        schema:
+#          pattern: ^[a-zA-Z0-9-]+$
+#          type: string
+#      responses:
+#        200:
+#          description: Return restaurant
+#          content:
+#            application/json:
+#              schema:
+#                $ref: '#/components/schemas/Restaurant'
+#        404:
+#          description: Restaurant does not exist
+#          content: {}
+#components:
+#  schemas:
+#    Restaurant:
+#      required:
+#      - name
+#      - likes
+#      - lat
+#      - lon
+#      - phone
+#      type: object
+#      properties:
+#        id:
+#          type: integer
+#          description: Unique identifier
+#          readOnly: true
+#          example: 123
+#        name:
+#          maxLength: 100
+#          minLength: 1
+#          type: string
+#          description: Restaurant's name
+#          example: "My Pizza Restaurant"
+#        likes:
+#          minLength: 1
+#          type: integer
+#          description: Restaurant Rating
+#          example: 42
+#        lat:
+#          type: number
+#          description: Restaurant Latitude
+#          example: 42.42
+#        lon:
+#          type: number
+#          description: Restaurant Longitude
+#          example: 42.42
+#        phone:
+#          type: string
+#          minLength: 5
+#          maxLength: 50
+#          description: Restaurant Phone Number
+#          example: "050123456"
+       
+  
