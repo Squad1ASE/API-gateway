@@ -10,3 +10,4 @@ email_validator
 pytest
 pytest-cov
 flask_mail==0.9.0
+connexion[swagger-ui]
