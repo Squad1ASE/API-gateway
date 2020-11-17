@@ -21,13 +21,23 @@ paths:
               schema:
                 type: object
                 properties:
-                  pets:
+                  reservation:
                     type: array
                     items:
                       $ref: '#/components/schemas/Reservation'
         401:
           description: User not logged
           content: {}
+        403:
+          description: User not admitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
   
   #/reservation/owners/all
   #/

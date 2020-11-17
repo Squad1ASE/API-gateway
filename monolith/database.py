@@ -136,7 +136,8 @@ class Restaurant(db.Model):
         if any(not isinstance(i,Restaurant.CUISINE_TYPES) for i in cuisine_types): raise ValueError("cuisine_type elements are not CUISINE_TYPES")
         if (len(cuisine_types) == 0): raise ValueError("cuisine_type is empty")
         return cuisine_types
-
+    def serialize(self):
+        return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
 
 class Table(db.Model):
     __tablename__ = 'table'
@@ -248,6 +249,9 @@ class Reservation(db.Model):
 
     date = db.Column(db.DateTime)
     cancelled = db.Column(db.Boolean, default=False)
+
+    def serialize(self):
+        return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
 
 
 class Seat(db.Model):
