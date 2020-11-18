@@ -7,6 +7,25 @@ servers:
 - url: /
 paths:
 
+  /reservation/all: 
+    get:
+      tags:
+      - All reservatinos
+      summary: Get all the reservations
+      operationId: views.reservation.get_all_reservation
+      responses:
+        200:
+          description: Return all reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+
   /reservation/customers/all: 
     get:
       tags:

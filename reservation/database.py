@@ -22,7 +22,8 @@ def init_db():
             example.booker_id = 1
             example.restaurant_id = 1
             example.table_id = 1
-            example.date = datetime.datetime.today().strftime("%d/%m/%Y %H:%M")
+            example.date = datetime.datetime.strptime("10/10/2020 12:00", "%d/%m/%Y %H:%M")
+            #datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
             example.cancelled = False
             db_session.add(example)
             db_session.commit()
@@ -37,25 +38,27 @@ def init_db():
 
     except Exception as e:
         print(e)
-
-
-
     
 class Reservation(db):
     __tablename__ = 'reservation'
+
     id = Column(Integer, primary_key=True, autoincrement=True)
-
     booker_id = Column(Integer)
-
     restaurant_id = Column(Integer)
-
     table_id = Column(Integer)
-
     date = Column(DateTime)
     cancelled = Column(Boolean, default=False)
 
     def serialize(self):
-        return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
+        dict = []
+        for k, v in self.__dict__.items():
+            if k[0] != '_':
+                if isinstance(v, datetime.datetime):
+                    dict.append([k, v.__str__()])
+                else:
+                    dict.append([k, v])
+        return dict
+        #return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
 
 
 class Seat(db):
@@ -65,9 +68,7 @@ class Seat(db):
 
     reservation_id = Column(Integer, ForeignKey('reservation.id'))
     reservation = relationship('Reservation', foreign_keys='Seat.reservation_id', backref=backref('seats', cascade="all, delete-orphan"))
-
     guests_email = Column(String)  
-
     confirmed = Column(Boolean, default=False)
 
     def serialize(self):
