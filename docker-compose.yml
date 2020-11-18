@@ -1,110 +1,85 @@
 version: "3"
 services:
-  nginx:
-    container_name: nginx
-    build: nginx
+  nginx-monolith:
+    container_name: nginx-monolith
+    build: monolith/nginx
     ports:
       - 80:80
     depends_on:
-      - flask
+      - flask-monolith
     networks:
-      - default
+      - monolith
+      - reservation
 
-  flask:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+  nginx-reservation:
+    container_name: nginx-reservation
+    build: reservation/nginx
+    ports:
+      - 8080:8080
+    depends_on:
+      - flask-monolith
+    networks:
+      - reservation
+      - monolith
+
+  flask-reservation:
+    build: reservation
     environment: 
-    - DATABASE_URI=postgresql://postgres:postgres@postgres:5432/postgres
-    - FLASK_RUN_HOST=0.0.0.0
-    - FLASK_APP=monolith/app.py
-    - CELERY_BROKER_URL=redis://redis:6379
-    - CELERY_BACKEND_URL=redis://redis:6379
-    - PYTHONPATH=monolith/
+      - DATABASE_URI=postgresql://postgres:postgres@postgres-reservation:5432/postgres
+      - FLASK_RUN_HOST=0.0.0.0
+      - FLASK_APP=app.py
+      - PYTHONPATH=./
+    ports:
+      - "6000-6010:6000"
+    links:
+      - postgres-reservation
+    networks:
+      - monolith
+    command: flask run
+    depends_on:
+      - postgres-reservation
+
+  flask-monolith:
+    build: monolith
+    environment: 
+      - DATABASE_URI=postgresql://postgres:postgres@postgres-monolith:5432/postgres
+      - FLASK_RUN_HOST=0.0.0.0
+      - FLASK_APP=app.py
+      - PYTHONPATH=./
     ports:
       - "5000-5010:5000"
     links:
-      - postgres
+      - postgres-monolith
     networks:
-      - default
+      - monolith
     command: flask run
     depends_on:
-      - postgres
-    #volumes:
-    #  - .:/gooutsafe
+      - postgres-monolith
 
-  postgres:
-    container_name: postgres
-    hostname: postgres
+  postgres-reservation:
+    container_name: postgres-reservation
+    hostname: postgres-reservation
     restart: always
     image: postgres:latest
     environment: 
       - POSTGRES_HOST_AUTH_METHOD=trust
-    #volumes_from:
-    #  - data
-    #volumes:
-    #  - ./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    #  - ./backups/postgresql:/backup
-    #env_file:
-    #  - env
     expose:
       - "5432"
     networks:
-      - default
+      - reservation
 
-  celery:
-    build: 
-      context: .
-    environment: 
-      - DATABASE_URI=postgresql://postgres:postgres@postgres:5432/postgres
-      - CELERY_BROKER_URL=redis://redis:6379
-      - CELERY_BACKEND_URL=redis://redis:6379
-      - PYTHONPATH=monolith/
-    command: "celery -A monolith.app.celery worker -l info"
-    user: root
-    networks:
-      - default
-    links:
-      - redis-service
-    depends_on:
-      - flask
-      - redis-service
-      - postgres
-    #volumes:
-    #  - .:/gooutsafe
-        
-  celery-beat:
-    build: 
-      context: .
-    environment: 
-      - DATABASE_URI=postgresql://postgres:postgres@postgres:5432/postgres
-      - CELERY_BROKER_URL=redis://redis:6379
-      - CELERY_BACKEND_URL=redis://redis:6379
-      - PYTHONPATH=monolith/
-    command: "celery -A monolith.app.celery beat -l info"
-    user: root
-    networks:
-      - default
-    links:
-      - redis-service
-    depends_on:
-      - flask
-      - redis-service
-      - postgres
-    #volumes:
-    #  - .:/gooutsafe
-
-  redis-service:
-    container_name: redis
+  postgres-monolith:
+    container_name: postgres-monolith
+    hostname: postgres-monolith
     restart: always
+    image: postgres:latest
+    environment: 
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    expose:
+      - "5432"
     networks:
-      - default
-    image: redis:latest
-    ports:
-      - "6380:6380"
-    links:
-      - postgres
-    depends_on:
-      - postgres
-    #volumes:
-    #  - .:/gooutsafe
+      - monolith
+
+networks:
+  monolith:
+  reservation:

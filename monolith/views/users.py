@@ -12,9 +12,6 @@ from flask_login import (current_user, login_user, logout_user,
 import datetime
 from monolith.views.restaurants import restaurant_delete
 
-
-from flask import jsonify
-
 users = Blueprint('users', __name__)
 
 @users.route('/users')
@@ -150,6 +147,7 @@ def reservation_list():
         data_dict.append(temp_dict)
 
     return render_template('user_reservations_list.html', reservations=data_dict, base_url="http://127.0.0.1:5000/users")
+
 
 @users.route('/users/deletereservation/<reservation_id>')
 @login_required

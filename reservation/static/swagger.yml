@@ -12,7 +12,7 @@ paths:
       tags:
       - Reservation list customers
       summary: Get all reservations made by the customer
-      operationId: monolith.views.customers.get_reservation_list
+      operationId: views.customers.get_reservation_list
       responses:
         200:
           description: Return all reservations made by the customer
@@ -45,7 +45,7 @@ paths:
       tags:
       - Reservation list owners
       summary: Get all reservations made on my own restaurants
-      operationId: monolith.views.owners.get_reservation_list
+      operationId: views.owners.get_reservation_list
       responses:
         200:
           description: Return all reservations made on my own restaurants
