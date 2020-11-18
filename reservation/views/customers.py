@@ -20,7 +20,7 @@ def get_reservation_list():
 
     data_dict = []
     for reservation in reservation_records:
-        resp,status_code = requests.get("/restaurants/"+reservation.restaurant_id+"/reservation")        
+        resp,status_code = requests.get("/restaurants/"+reservation.restaurant_id+"/reservation").json()        
         if(status_code==200):
             temp_dict = dict(
                 restaurant_name=resp['name'],

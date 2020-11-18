@@ -26,48 +26,17 @@ paths:
                     items:
                       $ref: '#/components/schemas/Reservation'
 
-  /reservation/customers/all: 
-    get:
-      tags:
-      - Reservation list customers
-      summary: Get all reservations made by the customer
-      operationId: views.customers.get_reservation_list
-      responses:
-        200:
-          description: Return all reservations made by the customer
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reservation:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Reservation'
-        401:
-          description: User not logged
-          content: {}
-        403:
-          description: User not admitted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message: 
-                    type: string
-                    example: You are not a customer
+  #/reservation/seat/all:                      
 
-  
-  /reservation/owners/all: 
+  /reservation/<int:user_id>/all: 
     get:
       tags:
-      - Reservation list owners
-      summary: Get all reservations made on my own restaurants
-      operationId: views.owners.get_reservation_list
+      - All reservations of a user
+      summary: Get all personal reservations  
+      operationId: views.reservation.get_reservation_list
       responses:
         200:
-          description: Return all reservations made on my own restaurants
+          description: Return all personal reservations of a user
           content:
             application/json:
               schema:
@@ -76,23 +45,27 @@ paths:
                   reservation:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Reservation'
-        401:
-          description: User not logged
-          content: {}
+                      oneOf:
+                        - $ref: '#/components/schemas/Reservation'
+                        - $ref: '#/components/schemas/Seat'
+                        - $ref: '#/components/schemas/ReservationSeat'                    
         403:
-          description: User not admitted
+          description: Unexpected error
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message: 
-                    type: string
-                    example: You are not a owner
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
+    Error:
+      required:
+      - message
+      properties:
+        message:
+          type: string
+          example: You are not allowed to this feature
+
     Reservation:
       required:
       - booker_id
@@ -127,5 +100,76 @@ components:
           type: boolean
           readOnly: false
           example: false
+
+    Seat:
+      required:
+      - restaurant_id
+      - guests_email
+      - confirmed
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier
+          readOnly: true
+          example: 123
+        restaurant_id:
+          type: integer
+          readOnly: true
+          example: 123
+        guests_email:
+          type: string
+          readOnly: true
+          example: guest@email.com
+        confirmed:
+          type: boolean
+          readOnly: false
+          example: false          
+
+    ReservationSeat:
+      required:
+      - booker_id
+      - restaurant_id
+      - table_id
+      - date
+      - cancelled
+      - guests_email
+      - confirmed
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier
+          readOnly: true
+          example: 123
+        booker_id:
+          type: integer
+          readOnly: true
+          example: 123
+        restaurant_id:
+          type: integer
+          readOnly: true
+          example: 123
+        table_id:
+          type: integer
+          readOnly: true
+          example: 123
+        date:
+          type: date
+          readOnly: true
+          example: "12/10/2020 12:00"
+        cancelled:
+          type: boolean
+          readOnly: false
+          example: false
+        guests_email:
+          type: string
+          readOnly: true
+          example: guest@email.com
+        confirmed:
+          type: boolean
+          readOnly: false
+          example: false          
+
        
   
