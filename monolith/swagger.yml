@@ -12,7 +12,7 @@ paths:
       tags:
       - Reservation list customers
       summary: Get all reservations made by the customer
-      operationId: monolith.views.customers.get_reservation_list #app.get_restaurants
+      operationId: monolith.views.customers.get_reservation_list
       responses:
         200:
           description: Return all reservations made by the customer
@@ -35,13 +35,43 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
+                  message: 
                     type: string
+                    example: You are not a customer
 
   
-  #/reservation/owners/all
-  #/
-    
+  /reservation/owners/all: 
+    get:
+      tags:
+      - Reservation list owners
+      summary: Get all reservations made on my own restaurants
+      operationId: monolith.views.owners.get_reservation_list
+      responses:
+        200:
+          description: Return all reservations made on my own restaurants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        401:
+          description: User not logged
+          content: {}
+        403:
+          description: User not admitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: 
+                    type: string
+                    example: You are not a owner
+
 components:
   schemas:
     Reservation:

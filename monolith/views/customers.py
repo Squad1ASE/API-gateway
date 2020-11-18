@@ -22,7 +22,8 @@ customers = Blueprint('customers', __name__)
 @login_required
 def get_reservation_list():
     if (current_user.role == 'ha' or current_user.role == 'owner'):
-        return json.dumps({'message': 'not a customer'}), 403
+        return json.dumps({'message': 'not a customer'}),403
+        
     reservation_records = db.session.query(Reservation).filter(
         Reservation.booker_id == current_user.id,
         Reservation.cancelled == False,
@@ -31,7 +32,7 @@ def get_reservation_list():
 
     data_dict = []
     for reservation in reservation_records:
-        resp,status_code = requests.get("/restaurants/"+reservation.restaurant_id+"/reservation")
+        resp,status_code = requests.get("/restaurants/"+reservation.restaurant_id+"/reservation")        
         if(status_code==200):
             temp_dict = dict(
                 restaurant_name=resp['name'],

@@ -130,9 +130,6 @@ def delete_user():
 @login_required
 def reservation_list():
 
-    return {}, 200
-
-    """
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
@@ -153,7 +150,6 @@ def reservation_list():
         data_dict.append(temp_dict)
 
     return render_template('user_reservations_list.html', reservations=data_dict, base_url="http://127.0.0.1:5000/users")
-    """
 
 @users.route('/users/deletereservation/<reservation_id>')
 @login_required
