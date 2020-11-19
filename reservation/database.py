@@ -50,14 +50,16 @@ class Reservation(db):
     cancelled = Column(Boolean, default=False)
 
     def serialize(self):
-        dict = []
+        temp_dict = dict()
         for k, v in self.__dict__.items():
             if k[0] != '_':
                 if isinstance(v, datetime.datetime):
-                    dict.append([k, v.__str__()])
+                    #temp_dict.append_entry(k, v.__str__())
+                    temp_dict[k] = v.__str__()
                 else:
-                    dict.append([k, v])
-        return dict
+                    #temp_dict.append_entry(k, v)
+                    temp_dict[k] = v
+        return temp_dict
         #return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
 
 
