@@ -7,10 +7,36 @@ servers:
 - url: /
 paths:
 
+  /reservation/<int:reservation_id>:
+    get:
+      tags:
+        - One specific reservation
+      summary: Get the reservation with this ID
+      operationId: views.reservation.get_reservation
+      responses:
+        200:
+          description: Return the reservation with this ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
   /reservation/all: 
     get:
       tags:
-      - All reservatinos
+        - All reservations
       summary: Get all the reservations
       operationId: views.reservation.get_all_reservation
       responses:
@@ -26,12 +52,60 @@ paths:
                     items:
                       $ref: '#/components/schemas/Reservation'
 
-  #/reservation/seat/all:                      
+  /reservation/<int:reservation_id>/seat/all:
+    get:
+      tags:
+        - All seat for this reservation 
+      summary: Get all the seat for this reservation
+      operationId: views.reservation.get_all_seat
+      responses:
+        200:
+          description: Return all seats for this reservation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seat'   
+        404:
+          description: There are not seats for this reservation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                      
+  /reservation/<int:restaurant_id>/all: 
+    get:
+      tags:
+        - All reservations for this restaurant
+      summary: Get all the reservations for this restaurant
+      operationId: views.reservation.get_restaurant_reservations
+      responses:
+        200:
+          description: Return all reservations for this reservation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        404:
+          description: There are not reservations for this restaurant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /reservation/<int:user_id>/all: 
     get:
       tags:
-      - All reservations of a user
+        - All reservations of a user
       summary: Get all personal reservations  
       operationId: views.reservation.get_reservation_list
       responses:
