@@ -48,6 +48,7 @@ class Reservation(db):
     table_id = Column(Integer)
     date = Column(DateTime)
     cancelled = Column(Boolean, default=False)
+    seats = relationship("Seat", cascade="all,delete,delete-orphan", backref="reservation")
 
     def serialize(self):
         temp_dict = dict()
@@ -67,9 +68,8 @@ class Seat(db):
     __tablename__ = 'seat'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-
     reservation_id = Column(Integer, ForeignKey('reservation.id'))
-    reservation = relationship('Reservation', foreign_keys='Seat.reservation_id', backref=backref('seats', cascade="all, delete-orphan"))
+    #reservation = relationship('Reservation', foreign_keys='Seat.reservation_id', backref=backref('seats', cascade="all, delete-orphan"))
     guests_email = Column(String)  
     confirmed = Column(Boolean, default=False)
 

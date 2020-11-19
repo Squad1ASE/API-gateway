@@ -1,49 +1,48 @@
 import requests
-from flask import Blueprint, jsonify, Response
+from flask import Blueprint, jsonify, Response, request
 from database import db_session, Reservation, Seat
 import datetime
 import json
 import time
 from time import mktime
 from datetime import timedelta
-
+import connexion
 
 reservation = Blueprint('reservation', __name__)
 
 # get all the reservation
-@reservation.route('/reservation/all', methods=['GET'])
 def get_all_reservation():
     reservation_records = db_session.query(Reservation).all()
     return [reservation.serialize() for reservation in reservation_records]
 
 # get the reservation with specific id
-@reservation.route('/reservation/<int:reservation_id>', methods=['GET'])
 def get_reservation(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        return Response('There is not a reservation with this ID', status=404)
+        #return Response('There is not a reservation with this ID', status=404)
+        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
 
 # get all the seat for a reservation
-@reservation.route('/reservation/<int:reservation_id>/seat/all', methods=['GET'])
-def get_all_seat(reservation_id):
+def get_seats(reservation_id):
+    reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
+    if reservation is None:
+        #return Response('There is not a reservation with this ID', status=404)
+        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
-    if len(seats) == 0:
-        return Response('There are not seat for this reservation', status=404)
     return [seat.serialize() for seat in seats]
 
 # get all the reservations for a restaurant
-@reservation.route('/reservation/restaurant/<int:restaurant_id>/all', methods=['GET'])
 def get_restaurant_reservations(restaurant_id):
     reservation_records = db_session.query(Reservation).filter_by(restaurant_id=restaurant_id).all()
-    if len(reservation_records) == 0:
-        return Response('There are not reservation for this restaurant', status=404)
     return [reservation.serialize() for reservation in reservation_records]
 
 
 # get all the reservation in which user is interested
-@reservation.route('/reservation/user/<int:user_id>/all', methods=['GET'])
 def get_user_reservations(user_id):
+    reservation_records = db_session.query(Reservation).filter_by(booker_id=user_id).all()
+    return [reservation.serialize() for reservation in reservation_records]
+    '''
     user = requests.get('http://127.0.0.1:5000/users/'+str(user_id)) #ASK USERS 
     #print(user.status_code)
 
@@ -141,12 +140,21 @@ def get_user_reservations(user_id):
             return data_dict
     else:
         return Response('It is not a user', status=403)
+    '''
 
+# create a reservation
+def create_reservation(user_id):
+    r = request.json
+    #print(r)
+    reservation = Reservation()
+    reservation.booker_id = r['booker_id']
+    reservation.restaurant_id = r['restaurant_id']
+    reservation.date = r['date']
+    seats = []
+    for seat in r['seats']:
+        seats.append(seat)
+    reservation.seat = seats
+    db_session.add(reservation)
+    db_session.commit()
+    return 'Reservation is created succesfully'
 
-
-"""
-
-#request example reservation/create?table_id=<int>&guests=<emails>&date=<date_str> ?
-#reservation.route('reservation/create')
-
-"""

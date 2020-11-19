@@ -6,8 +6,8 @@ info:
 servers:
 - url: /
 paths:
-
-  /reservation/all: 
+  
+  /reservations: 
     get:
       tags:
         - All reservations
@@ -26,11 +26,18 @@ paths:
                     items:
                       $ref: '#/components/schemas/Reservation'
 
-  /reservation/<int:reservation_id>:
+  /reservations/{reservation_id}:
     get:
       tags:
         - One specific reservation
       summary: Get the reservation with this ID
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
       operationId: views.reservation.get_reservation
       responses:
         200:
@@ -51,12 +58,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /reservation/<int:reservation_id>/seat/all:
+    #post:
+    #  tags:
+    #    - Edit this reservation
+    #  summary: Edit this reservation
+
+    #delete:
+    #  tags:
+    #    - Delete this reservation
+    #  summary: Delete this reservation
+
+  /reservations/{reservation_id}/seats:
     get:
       tags:
         - All seat for this reservation 
       summary: Get all the seat for this reservation
-      operationId: views.reservation.get_all_seat
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+      operationId: views.reservation.get_seats
       responses:
         200:
           description: Return all seats for this reservation
@@ -70,21 +94,28 @@ paths:
                     items:
                       $ref: '#/components/schemas/Seat'   
         404:
-          description: There are not seats for this reservation
+          description: There is not a reservation with this ID
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'                
-               
-  /reservation/restaurant/<int:restaurant_id>/all: 
+                $ref: '#/components/schemas/Error'     
+
+  /reservations/restaurants/{restaurant_id}:
     get:
       tags:
         - All reservations for this restaurant
-      summary: Get all the reservations for this restaurant
+      summary: Get all reservations for this restaurant
+      parameters:
+        - in: path
+          name: restaurant_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the restaurant
       operationId: views.reservation.get_restaurant_reservations
       responses:
         200:
-          description: Return all reservations for this reservation
+          description: Return all reservations for this restaurant
           content:
             application/json:
               schema:
@@ -94,19 +125,29 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Reservation'
-        404:
-          description: There are not reservations for this restaurant
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+    #put:
+    #  tags:
+    #    - Create a reservation for this restaurant
+    #  summary: Create a reservation for this restaurant
+
+    #delete:
+    #  tags:
+    #    - Delete all reservations for this restaurant
+    #  summary: Delete all reservations for this restaurant  
 
 
-  /reservation/user/<int:user_id>/all: 
+  /reservations/users/{user_id}: 
     get:
       tags:
         - All reservations for this user
       summary: Get all the reservations for this user  
+      parameters:
+        - in: path
+          name: user_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the user
       operationId: views.reservation.get_user_reservations
       responses:
         200:
@@ -122,13 +163,33 @@ paths:
                       oneOf:
                         - $ref: '#/components/schemas/Reservation'
                         - $ref: '#/components/schemas/Seat'
-                        - $ref: '#/components/schemas/ReservationSeat'                    
-        403:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+                        - $ref: '#/components/schemas/ReservationSeat'
+
+    put:
+      tags:
+        - Create a reservation for this user
+      summary: Create a reservation for this user
+      parameters:
+        - in: path
+          name: user_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the user
+      operationId: views.reservation.create_reservation
+      responses:
+        200:
+          description: The reservation is created
+          content: {}
+    
+    #delete:
+    #  tags:
+    #    - Delete all the reservations made by the user
+    #  summary: Delete all the reservations made by this user
+ 
+
+  #TODO: confirm participants
+  #reservations/{reservation_id}/entrances:
 
 
 
@@ -147,24 +208,33 @@ components:
       - booker_id
       - restaurant_id
       - table_id
+      - seats
       - date
       - cancelled
       type: object
       properties:
         id:
+          minimum: 1
           type: integer
           description: Unique identifier
           readOnly: true
           example: 123
         booker_id:
+          minimum: 1
           type: integer
           readOnly: true
           example: 123
         restaurant_id:
+          minimum: 1
           type: integer
           readOnly: true
           example: 123
+        seats:
+          type: Seat
+          readOnly: false
+          $ref: '#/components/schemas/Seat'
         table_id:
+          minimum: 1
           type: integer
           readOnly: true
           example: 123
@@ -185,11 +255,13 @@ components:
       type: object
       properties:
         id:
+          minimum: 1
           type: integer
           description: Unique identifier
           readOnly: true
           example: 123
         reservation_id:
+          minimum: 1
           type: integer
           readOnly: true
           example: 123
