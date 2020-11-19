@@ -7,6 +7,25 @@ servers:
 - url: /
 paths:
 
+  /reservation/all: 
+    get:
+      tags:
+        - All reservations
+      summary: Get all the reservations
+      operationId: views.reservation.get_all_reservation
+      responses:
+        200:
+          description: Return all reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+
   /reservation/<int:reservation_id>:
     get:
       tags:
@@ -32,26 +51,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-
-  /reservation/all: 
-    get:
-      tags:
-        - All reservations
-      summary: Get all the reservations
-      operationId: views.reservation.get_all_reservation
-      responses:
-        200:
-          description: Return all reservations
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reservation:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Reservation'
-
   /reservation/<int:reservation_id>/seat/all:
     get:
       tags:
@@ -75,9 +74,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-                      
-  /reservation/<int:restaurant_id>/all: 
+                $ref: '#/components/schemas/Error'                
+               
+  /reservation/restaurant/<int:restaurant_id>/all: 
     get:
       tags:
         - All reservations for this restaurant
@@ -102,12 +101,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /reservation/<int:user_id>/all: 
+
+  /reservation/user/<int:user_id>/all: 
     get:
       tags:
-        - All reservations of a user
-      summary: Get all personal reservations  
-      operationId: views.reservation.get_reservation_list
+        - All reservations for this user
+      summary: Get all the reservations for this user  
+      operationId: views.reservation.get_user_reservations
       responses:
         200:
           description: Return all personal reservations of a user
@@ -129,6 +129,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+
 
 components:
   schemas:
@@ -177,7 +179,7 @@ components:
 
     Seat:
       required:
-      - restaurant_id
+      - reservation_id
       - guests_email
       - confirmed
       type: object
@@ -187,7 +189,7 @@ components:
           description: Unique identifier
           readOnly: true
           example: 123
-        restaurant_id:
+        reservation_id:
           type: integer
           readOnly: true
           example: 123
@@ -207,6 +209,7 @@ components:
       - table_id
       - date
       - cancelled
+      - reservation_id
       - guests_email
       - confirmed
       type: object
@@ -236,6 +239,10 @@ components:
           type: boolean
           readOnly: false
           example: false
+        reservation_id:
+          type: integer
+          readOnly: true
+          example: 123
         guests_email:
           type: string
           readOnly: true
