@@ -18,7 +18,7 @@ def get_reservation_list():
     data_dict = []
 
     #restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
-    restaurants_records,status_code = requests.get("/restaurants/"+current_user.id)    #ASK FOR THIS ENDPOINT    
+    restaurants_records,status_code = requests.get("/restaurants/"+current_user.id).json()    #ASK FOR THIS ENDPOINT    
 
     if status_code==200:
 
@@ -34,10 +34,10 @@ def get_reservation_list():
                 seat = db_session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
 
                 #booker = db.session.query(User).filter(User.id == reservation.booker_id).first()
-                booker, booker_statuc_code = requests.get("/users/"+reservation.booker_id).first() #ASK FOR THIS ENDPOINT  
+                booker, booker_statuc_code = requests.get("/users/"+reservation.booker_id).json() #ASK FOR THIS ENDPOINT  
 
                 #table = db.session.query(Table).filter(Table.id == reservation.table_id).first()
-                table, table_status_code = requests.get('restaurants/tables'+reservation.table_id).first() #ASK FOR THIS ENDPOINT
+                table, table_status_code = requests.get('restaurants/tables'+reservation.table_id).json() #ASK FOR THIS ENDPOINT
 
                 if booker_status_code == 200 and table_status_code == 200:
                     temp_dict = dict(
