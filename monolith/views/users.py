@@ -160,6 +160,7 @@ def deletereservation(reservation_id):
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
+
     reservation = db.session.query(Reservation).filter(
         Reservation.id == reservation_id,
         Reservation.booker_id == current_user.id

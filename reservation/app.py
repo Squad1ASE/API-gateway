@@ -15,6 +15,5 @@ application = app.app
 def shutdown_session(exception=None):
     database.db_session.remove()
 
-
 if __name__ == '__main__':
-    app.run(port=6000)
+    app.run(port=5100)
