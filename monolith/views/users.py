@@ -154,7 +154,15 @@ def reservation_list():
         )
         data_dict.append(temp_dict)
     '''
-    data_dict = requests.get('http://localhost:5100/reservations/users/' + str(current_user.id)).json()
+    reservation_records = requests.get('http://localhost:5100/reservations/users/' + str(current_user.id)).json()
+    data_dict=[]
+    for reservation in reservation_records:
+        temp_dict = dict(
+            restaurant_name=db.session.query(Restaurant).filter_by(id = reservation["restaurant_id"]).first().name, #todo endpoint call
+            date=reservation["date"],
+            reservation_id=reservation["id"]
+        )
+        data_dict.append(temp_dict)
 
     return render_template('user_reservations_list.html', reservations=data_dict)
 

@@ -172,7 +172,7 @@ def delete_reservation(reservation_id):
         reservation.cancelled == True
         db_session.commit()
 
-        seat_query = Seat.query.filter_by(reservation_id=reservation.id).all()
+        seat_query = db_session.query(Seat).filter_by(reservation_id=reservation.id).all()
 
         for seat in seat_query:
             seat.confirmed = False
