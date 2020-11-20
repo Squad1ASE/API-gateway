@@ -701,7 +701,7 @@ def confirm_participants(restaurant_id, reservation_id):
         return make_response(render_template('error.html', message="You are not the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
 
     # check if the reservation is in the past or in the future
-
+    '''
     reservation = db.session.query(Reservation).filter_by(id=reservation_id).first()
     if (reservation is None or reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
         return make_response(render_template('error.html', message="You can't confirm participants for this reservation!", redirect_url="/restaurants/reservation_list"), 403)
@@ -709,6 +709,8 @@ def confirm_participants(restaurant_id, reservation_id):
     # get the guests in this reservation
 
     seats = db.session.query(Seat).filter_by(reservation_id=reservation_id).all()
+    '''
+    seats = requests.get('http://127.0.0.1:5100/reservations/'+str(reservation_id)+'/seats').json()
 
     class ConfirmedSeatFormTest(FlaskForm):
         guests = f.FieldList(f.BooleanField())
@@ -719,12 +721,13 @@ def confirm_participants(restaurant_id, reservation_id):
     guests = []
     
     for seat in seats:
-        if seat.confirmed == True:
+        #if seat['confirmed'] == True:
             # in this case the participants are already confirmed by the owner
-            return make_response(render_template('error.html', message="Participants are already confirmed for this reservation", redirect_url="/restaurants/reservation_list"), 403)
-        guests.append(seat.guests_email)
+        #    return make_response(render_template('error.html', message="Participants are already confirmed for this reservation", redirect_url="/restaurants/reservation_list"), 403)
+        guests.append(seat['guests_email'])
 
     if request.method == 'POST':
+        '''
         
         # get all the confirmed participants
         for key in request.form:
@@ -733,9 +736,17 @@ def confirm_participants(restaurant_id, reservation_id):
                 seat = db.session.query(Seat).filter_by(guests_email=email).filter_by(reservation_id=reservation_id).first()
                 seat.confirmed = True
                 db.session.commit()
-
-        #TODO: maybe create an apposite page that lists all confirmed participants
-        return make_response(render_template('error.html', message="Participants confirmed", redirect_url="/"), 200)
-
+        '''
+        entrances = []
+        for key in request.form:
+            if key != 'csrf_token':
+                email = request.form[key]
+                entrances.append(email)
+        if requests.post('http://127.0.0.1:5100/reservations/'+str(reservation_id)+'/entrances', json=entrances).status_code == 200:
+            #TODO: maybe create an apposite page that lists all confirmed participants
+            return make_response(render_template('error.html', message="Participants confirmed", redirect_url="/"), 200)
+        else:
+            return make_response(render_template('error.html', message="Error", redirect_url="/"), 403)
+        
 
     return render_template('restaurant_confirm_participants.html', guests=guests, form=form)

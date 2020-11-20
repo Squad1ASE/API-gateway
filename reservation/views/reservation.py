@@ -36,7 +36,7 @@ def get_seats(reservation_id):
 # get all the reservations for a restaurant
 def get_restaurant_reservations(restaurant_id):
     # get the future reservation
-    reservation_records = db.session.query(Reservation).filter(Reservation.restaurant_id == restaurant_id, Reservation.cancelled == False, Reservation.date >= datetime.datetime.now() - timedelta(hours=3)).all()
+    reservation_records = db_session.query(Reservation).filter(Reservation.restaurant_id == restaurant_id, Reservation.cancelled == False, Reservation.date >= datetime.datetime.now() - timedelta(hours=3)).all()
     return [reservation.serialize() for reservation in reservation_records]
 
 # create a reservation
@@ -76,7 +76,7 @@ def create_reservation(user_id):
             print(e)
 
     if time_span is False:
-        return connexion.problem(400, 'Error', 'Restaurant is not open at this hour!')
+        return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
 
     # check if there is any table with this capacity
     all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/tables').json()
@@ -106,7 +106,7 @@ def create_reservation(user_id):
             table_id_reservation = table['id']
             break
     if table_id_reservation is None:
-        return connexion.problem(400, 'Error', "No table available for this amount of people at this time!")
+        return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
     else:
         # add the reservation
         reservation = Reservation()
@@ -126,6 +126,29 @@ def create_reservation(user_id):
         db_session.commit()
 
         return 'Reservation is created succesfully'
+
+def confirm_participants(reservation_id):
+    r = request.json
+    print(r)
+    # get the reservation
+    reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
+    if reservation is None:
+        #return Response('There is not a reservation with this ID', status=404)
+        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
+    if (reservation is None or reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
+        return connexion.problem(403, 'Error', 'The reservation is too old or in the future')
+    # get the seats
+    seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
+    for seat in seats:
+        if seat.confirmed == True:
+            # in this case the participants are already confirmed by the owner
+            return connexion.problem(403, 'Error', "Participants are already confirmed for this reservation")
+        seat.confirmed = True
+        #guests.append(seat.guests_email)
+    db.commit()
+    return 'Particiapants confirmed'
+
+
 
 
 # get all the reservation in which user is interested
