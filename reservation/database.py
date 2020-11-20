@@ -60,6 +60,11 @@ class Reservation(db):
                 else:
                     #temp_dict.append_entry(k, v)
                     temp_dict[k] = v
+        seats = []
+        for seat in self.seats:
+            seats.append(seat.serialize())
+        temp_dict['seats'] = seats
+
         return temp_dict
         #return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
 

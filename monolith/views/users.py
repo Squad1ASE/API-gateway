@@ -11,6 +11,7 @@ from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
 from monolith.views.restaurants import restaurant_delete
+import requests
 
 users = Blueprint('users', __name__)
 
@@ -129,7 +130,8 @@ def reservation_list():
 
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
-
+    
+    '''
     reservation_records = db.session.query(Reservation).filter(
         Reservation.booker_id == current_user.id, 
         Reservation.cancelled == False,
@@ -145,8 +147,10 @@ def reservation_list():
             reservation_id = reservation.id
         )
         data_dict.append(temp_dict)
+    '''
+    data_dict = requests.get('http://localhost:5100/reservations/users/'+str(current_user.id)).json()
 
-    return render_template('user_reservations_list.html', reservations=data_dict, base_url="http://127.0.0.1:5000/users")
+    return render_template('user_reservations_list.html', reservations=data_dict)
 
 
 @users.route('/users/deletereservation/<reservation_id>')

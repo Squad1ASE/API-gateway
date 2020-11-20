@@ -34,8 +34,25 @@ def get_seats(reservation_id):
 
 # get all the reservations for a restaurant
 def get_restaurant_reservations(restaurant_id):
-    reservation_records = db_session.query(Reservation).filter_by(restaurant_id=restaurant_id).all()
+    # get the future reservation
+    reservation_records = db.session.query(Reservation).filter(Reservation.restaurant_id == restaurant_id, Reservation.cancelled == False, Reservation.date >= datetime.datetime.now() - timedelta(hours=3)).all()
     return [reservation.serialize() for reservation in reservation_records]
+
+# create a reservation
+def create_reservation(user_id):
+    r = request.json
+    #print(r)
+    reservation = Reservation()
+    reservation.booker_id = r['booker_id']
+    reservation.restaurant_id = r['restaurant_id']
+    reservation.date = r['date']
+    seats = []
+    for seat in r['seats']:
+        seats.append(seat)
+    reservation.seat = seats
+    db_session.add(reservation)
+    db_session.commit()
+    return 'Reservation is created succesfully'
 
 
 # get all the reservation in which user is interested
@@ -142,19 +159,5 @@ def get_user_reservations(user_id):
         return Response('It is not a user', status=403)
     '''
 
-# create a reservation
-def create_reservation(user_id):
-    r = request.json
-    #print(r)
-    reservation = Reservation()
-    reservation.booker_id = r['booker_id']
-    reservation.restaurant_id = r['restaurant_id']
-    reservation.date = r['date']
-    seats = []
-    for seat in r['seats']:
-        seats.append(seat)
-    reservation.seat = seats
-    db_session.add(reservation)
-    db_session.commit()
-    return 'Reservation is created succesfully'
+
 

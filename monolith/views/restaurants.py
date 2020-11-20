@@ -18,6 +18,7 @@ import datetime
 from time import mktime
 from datetime import timedelta
 from sqlalchemy import or_
+import requests
 
 restaurants = Blueprint('restaurants', __name__)
 
@@ -598,41 +599,64 @@ def create_review(restaurant_id):
 @restaurants.route('/restaurants/reservation_list', methods=['GET'])
 @login_required
 def reservation_list():
-    if current_user is not None and hasattr(current_user, 'id'):
 
-        if (current_user.role == 'ha' or current_user.role == 'customer'):
-            return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
+    if (current_user.role == 'ha' or current_user.role == 'customer'):
+        return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
+    
+    
+    data_dict = []
+    restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
+    '''
+    for restaurant in restaurants_records:
         
-        data_dict = []
-        restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
+        reservation_records = db.session.query(Reservation).filter(
+            Reservation.restaurant_id == restaurant.id, 
+            Reservation.cancelled == False,
+            Reservation.date >= datetime.datetime.now() - timedelta(hours=3)
+        ).all()
+    '''
+    for restaurant in restaurants_records:
+        for reservation in requests.get('http://localhost:5100/reservations/restaurants/'+str(restaurant.id)).json():
+            print(reservation)
+            booker = db.session.query(User).filter_by(id=reservation['booker_id']).first()
+            seat = reservation['seats']
+            table = db.session.query(Table).filter_by(restaurant_id=restaurant.id, id=reservation['table_id']).first()
+            temp_dict = dict(
+                restaurant_name = restaurant.name,
+                restaurant_id = restaurant.id,
+                date = reservation['date'],
+                table_name = table.table_name,
+                number_of_guests = len(seat),
+                booker_fn = booker.firstname,
+                booker_ln = booker.lastname,
+                booker_phone = booker.phone,
+                reservation_id = reservation['id']
+            )
+            data_dict.append(temp_dict)
 
-        for restaurant in restaurants_records:
-            
-            reservation_records = db.session.query(Reservation).filter(
-                Reservation.restaurant_id == restaurant.id, 
-                Reservation.cancelled == False,
-                Reservation.date >= datetime.datetime.now() - timedelta(hours=3)
-            ).all()
+    '''
 
-            for reservation in reservation_records:
-                booker = db.session.query(User).filter(User.id == reservation.booker_id).first()
-                seat = db.session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
-                table = db.session.query(Table).filter(Table.id == reservation.table_id).first()
-                temp_dict = dict(
-                    restaurant_name = restaurant.name,
-                    restaurant_id = restaurant.id,
-                    date = reservation.date,
-                    table_name = table.table_name,
-                    number_of_guests = len(seat),
-                    booker_fn = booker.firstname,
-                    booker_ln = booker.lastname,
-                    booker_phone = booker.phone,
-                    reservation_id = reservation.id
-                )
-                data_dict.append(temp_dict)
+        for reservation in reservation_records:
+            booker = db.session.query(User).filter(User.id == reservation.booker_id).first()
+            seat = db.session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
+            table = db.session.query(Table).filter(Table.id == reservation.table_id).first()
+            temp_dict = dict(
+                restaurant_name = restaurant.name,
+                restaurant_id = restaurant.id,
+                date = reservation.date,
+                table_name = table.table_name,
+                number_of_guests = len(seat),
+                booker_fn = booker.firstname,
+                booker_ln = booker.lastname,
+                booker_phone = booker.phone,
+                reservation_id = reservation.id
+            )
+            data_dict.append(temp_dict)
 
-        data_dict = sorted(data_dict, key = lambda i: (i['restaurant_name'],i['date']))
-
+    data_dict = sorted(data_dict, key = lambda i: (i['restaurant_name'],i['date']))
+    '''
+    
+    
                 
     return render_template('restaurant_reservations_list.html', reservations=data_dict)
 
@@ -651,7 +675,7 @@ def confirm_participants(restaurant_id, reservation_id):
     # check if the reservation is in the past or in the future
 
     reservation = db.session.query(Reservation).filter_by(id=reservation_id).first()
-    if (reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
+    if (reservation is None or reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
         return make_response(render_template('error.html', message="You can't confirm participants for this reservation!", redirect_url="/restaurants/reservation_list"), 403)
 
     # get the guests in this reservation
