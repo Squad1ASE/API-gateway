@@ -6,38 +6,44 @@ import json
 import time
 from time import mktime
 from datetime import timedelta
+#from app import delete_reservations_task
 import connexion
 import ast
 
 reservation = Blueprint('reservation', __name__)
+
 
 # get all the reservation
 def get_all_reservation():
     reservation_records = db_session.query(Reservation).all()
     return [reservation.serialize() for reservation in reservation_records]
 
+
 # get the reservation with specific id
 def get_reservation(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        #return Response('There is not a reservation with this ID', status=404)
+        # return Response('There is not a reservation with this ID', status=404)
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
+
 
 # get all the seat for a reservation
 def get_seats(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        #return Response('There is not a reservation with this ID', status=404)
+        # return Response('There is not a reservation with this ID', status=404)
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     return [seat.serialize() for seat in seats]
+
 
 # get all the reservations for a restaurant
 def get_restaurant_reservations(restaurant_id):
     # get the future reservation
     reservation_records = db_session.query(Reservation).filter(Reservation.restaurant_id == restaurant_id, Reservation.cancelled == False, Reservation.date >= datetime.datetime.now() - timedelta(hours=3)).all()
     return [reservation.serialize() for reservation in reservation_records]
+
 
 # create a reservation
 def create_reservation(user_id):
@@ -146,9 +152,49 @@ def confirm_participants(reservation_id):
         seat.confirmed = True
         #guests.append(seat.guests_email)
     db.commit()
-    return 'Particiapants confirmed'
+    return 'Participants confirmed'
 
 
+
+# delete a reservation
+def delete_reservation(reservation_id):
+    reservation = db_session.query(Reservation).filter(
+        Reservation.id == reservation_id,
+    ).first()
+
+    if reservation is not None:
+        now = datetime.datetime.now()
+        if reservation.date < now:
+            return connexion.problem(403, 'Error', "You can't delete a past reservation")
+
+        # todo chiamare task celery
+        # delete_reservations_task([reservation_id]).delay()
+        reservation.cancelled == True
+        db_session.commit()
+
+        seat_query = Seat.query.filter_by(reservation_id=reservation.id).all()
+
+        for seat in seat_query:
+            seat.confirmed = False
+
+
+        table_name = requests.get('http://127.0.0.1:5000/restaurants/' + str(reservation.restaurant_id) + '/' + str(
+            reservation.table_id)).json()['table_name']
+
+        restaurant_owner_id = int(requests.get(
+            'http://127.0.0.1:5000/restaurants/' + str(reservation.restaurant_id) + '/owner').json()['owner'])
+
+        notification = jsonify(
+            date=now,
+            type=2,
+            message='The reservation of the ' + table_name + ' table for the date ' + str(
+                reservation.date) + ' has been canceled',
+            user_id=restaurant_owner_id
+        )
+
+        requests.put('http://127.0.0.1:5000/users/notification', json=notification)
+        return "The reservation is deleted"
+    return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
 
 
 # get all the reservation in which user is interested
@@ -254,6 +300,3 @@ def get_user_reservations(user_id):
     else:
         return Response('It is not a user', status=403)
     '''
-
-
-
