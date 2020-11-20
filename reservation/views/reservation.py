@@ -27,7 +27,6 @@ def get_reservation(reservation_id):
 def get_seats(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        #return Response('There is not a reservation with this ID', status=404)
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     return [seat.serialize() for seat in seats]
@@ -53,6 +52,33 @@ def create_reservation(user_id):
     db_session.add(reservation)
     db_session.commit()
     return 'Reservation is created succesfully'
+
+#edit the reservation with specific id
+def edit_reservation(reservation_id):
+    old_res = db_session.query(Reservation).filter_by(id=reservation_id).first()
+    if old_res is None:
+        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
+
+    #db_session.delete(old_res.seats) # delete all old seats data DOES NOT WORK IN THIS WAY
+    
+    seats_to_remove = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
+    for s in seats_to_remove:
+        db_session.delete(s)
+
+    rs = request.json # save all new seats data
+
+    for r in rs: #get an array of new seats
+        #print(i['confirmed'])
+
+        seat = Seat()
+        seat.reservation_id = reservation_id
+        seat.guests_email = r['guests_email']
+        seat.confirmed = r['confirmed']
+        db_session.add(seat)
+
+    db_session.commit()        
+    return 'Reservation is edited successfully!!'
+
 
 
 # get all the reservation in which user is interested

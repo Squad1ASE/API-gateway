@@ -58,10 +58,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-    #post:
-    #  tags:
-    #    - Edit this reservation
-    #  summary: Edit this reservation
+    post:
+      tags:
+        - Edit this reservation
+      summary: Edit the reservation with this ID
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+      operationId: views.reservation.edit_reservation
+      responses:
+        200:
+          description: Return the reservation with this ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+
 
     #delete:
     #  tags:
