@@ -181,6 +181,12 @@ paths:
         200:
           description: The reservation is created
           content: {}
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'   
     
     #delete:
     #  tags:
@@ -209,6 +215,7 @@ components:
       - restaurant_id
       - table_id
       - seats
+      - places
       - date
       - cancelled
       type: object
@@ -233,6 +240,11 @@ components:
           type: Seat
           readOnly: false
           $ref: '#/components/schemas/Seat'
+        places:
+          minimum: 1
+          type: integer
+          readOnly: false
+          example: 123
         table_id:
           minimum: 1
           type: integer

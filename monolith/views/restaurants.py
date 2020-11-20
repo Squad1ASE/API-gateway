@@ -165,8 +165,32 @@ def restaurant_sheet(restaurant_id):
 
 
     if request.method == 'POST':
-
+                positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
+                if positive_record is not None:
+                    return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
                 if form.validate_on_submit():
+
+                    #weekday = form.date.data.weekday() + 1
+                    reservation_time = time.strptime(request.form['time'], '%H:%M')
+                    reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])
+                    reservation_datetime = datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
+                    #reservation_datetime_str = str(reservation_datetime_str) + ' ' + str(reservation_time)
+                    temp_dict = dict(
+                        booker_id = current_user.id,
+                        booker_email = current_user.email,
+                        restaurant_id = restaurant_id,
+                        #date = datetime.datetime.strftime(reservation_datetime),
+                        date = str(request.form['date']),
+                        time = str(request.form['time']),
+                        places = form.guests.data
+                    )
+                    print(temp_dict)
+                    if requests.put('http://127.0.0.1:5100/reservations/users/'+str(current_user.id), json=temp_dict).status_code == 200:
+                        return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
+                    else:
+                        return make_response(render_template('error.html', message="Error", redirect_url="/"), 403)
+
+                    '''
                     tavoli = db.session.query(Table).filter(Table.restaurant_id == restaurant_id).all()
                     # 1 transform datetime from form in week day
                     # 2 search inside working day DB with restaurant ID, check if in the specific day and time the restaurant is open
@@ -237,7 +261,7 @@ def restaurant_sheet(restaurant_id):
                     else:
                         return redirect('/restaurants/'+str(restaurant_id)+'/reservation?table_id='+str(table_id_reservation)+'&'+'guests='+str(form.guests.data)+'&'+'date='+reservation_datetime_str)
                         #return redirect('/restaurants/'+str(restaurant_id)+'/reservation', table_id=table_id_reservation, guests=form.guests.data)
-
+                '''
 
     return render_template("restaurantsheet.html", **data_dict)
 
@@ -300,6 +324,8 @@ def reservation(restaurant_id):
     if (current_user.role == 'owner' or current_user.role == 'ha'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
+
+
     positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
     if positive_record is not None:
         return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
@@ -326,6 +352,8 @@ def reservation(restaurant_id):
     if request.method == 'POST':
 
             if form.validate_on_submit():
+
+
 
                 reservation = Reservation()
                 reservation.booker_id = current_user.id
