@@ -7,6 +7,7 @@ import time
 from time import mktime
 from datetime import timedelta
 import connexion
+import ast
 
 reservation = Blueprint('reservation', __name__)
 
@@ -55,6 +56,8 @@ def create_reservation(user_id):
 
 #edit the reservation with specific id
 def edit_reservation(reservation_id):
+    """
+    # without number of places changed
     old_res = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if old_res is None:
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
@@ -77,7 +80,87 @@ def edit_reservation(reservation_id):
         db_session.add(seat)
 
     db_session.commit()        
-    return 'Reservation is edited successfully!!'
+    return 'Reservation is edited successfully'
+
+    """
+
+    # {'places':2}
+    # {'seats': [{-----}]}
+    #curl -i -d "{'places':2, 'seats':[{'confirmed':false,'guests_email':'testONE@test.com','id':33,'reservation_id':1}]}" http://127.0.0.1:5000/reservations/1
+
+
+    old_res = db_session.query(Reservation).filter_by(id=reservation_id).first()
+    if old_res is None:
+        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
+    
+
+    r = request.json # save all new seats data and places if changed
+
+    all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(old_res.restaurant_id)+'/tables').json()    
+    tables = []
+    changed = True
+    for table in all_tables:        
+        t = ast.literal_eval(table)
+        print(t)
+        if t['id'] == old_res.table_id and t['capacity'] == r['places']: #no table changes
+            changed = False       
+        if t['capacity'] > r['places']:
+            tables.append(t)
+    if changed:    
+        if len(tables) == 0:
+            return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
+        else: # assign new table
+            old_res.table_id = None
+
+            #date_str = old_res.date
+            #date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
+            date = old_res.date
+            # check if there is a table for this amount of time
+            #TODO: make it with the right amount of time
+            start_reservation = date - timedelta(minutes=15)#restaurant.avg_time_of_stay)
+            end_reservation = date + timedelta(minutes=15)#restaurant.avg_time_of_stay)            
+            reserved_table_records = db_session.query(Reservation).filter(
+                    Reservation.date >= start_reservation,
+                    Reservation.date <= end_reservation,
+                    Reservation.cancelled == False
+                ).all()
+            reserved_table_ids = [reservation.table_id for reservation in reserved_table_records]
+            tables.sort(key=lambda x: x['capacity'])
+            table_id_reservation = None
+            for table in tables:
+                if table['id'] not in reserved_table_ids:
+                    table_id_reservation = table['id']
+                    break
+            if table_id_reservation is None:
+                return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
+
+            else:
+                old_res.table_id = table_id_reservation
+
+    # case changed=False or len(tables)>0 change seat
+
+    old_seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
+    for s in old_seats:
+        db_session.delete(s)
+
+
+    for s in r['seats']: #get an array of new seats
+        #print(i['confirmed'])
+
+        seat = Seat()
+        seat.reservation_id = old_res.id  #s['reservation_id']
+        seat.guests_email = s['guests_email']
+        seat.confirmed = s['confirmed']
+
+        old_res.seats.append(seat)
+        db_session.add(seat)
+        
+
+    db_session.commit()        
+    return 'Reservation is edited successfully'
+
+
+
 
 
 
