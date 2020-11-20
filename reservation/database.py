@@ -25,6 +25,7 @@ def init_db():
             example.date = datetime.datetime.strptime("10/10/2020 12:00", "%d/%m/%Y %H:%M")
             #datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
             example.cancelled = False
+            example.places = 2
             db_session.add(example)
             db_session.commit()
         q = db_session.query(Seat).filter(Seat.id == 1).first()
@@ -33,6 +34,8 @@ def init_db():
             example.reservation_id = 1
             example.guests_email = 'test@test.com'
             example.confirmed = False
+            r = db_session.query(Reservation).filter(Reservation.id == 1).first()
+            r.seats.append(example)
             db_session.add(example)
             db_session.commit()
 
@@ -48,6 +51,7 @@ class Reservation(db):
     table_id = Column(Integer)
     date = Column(DateTime)
     cancelled = Column(Boolean, default=False)
+    places = Column(Integer)
     seats = relationship("Seat", cascade="all,delete,delete-orphan", backref="reservation")
 
     def serialize(self):
