@@ -57,16 +57,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Delete this reservation
+      summary: Delete this reservation
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+      operationId: views.reservation.delete_reservation
+      responses:
+        200:
+          description: The reservation is deleted
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     #post:
     #  tags:
     #    - Edit this reservation
     #  summary: Edit this reservation
-
-    #delete:
-    #  tags:
-    #    - Delete this reservation
-    #  summary: Delete this reservation
 
   /reservations/{reservation_id}/seats:
     get:

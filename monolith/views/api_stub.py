@@ -45,5 +45,29 @@ def send_reservation():
     return requests.put("http://127.0.0.1:5000/reservations/users/1", data=json.dumps(temp_dict)) 
 
 
+#get owner by restaurant id
+@api_stub.route('/restaurants/<restaurant_id>/owner')
+def get_owner(restaurant_id):
+    restaurant = db.session.query(Restaurant).filter(Restaurant.id == int(restaurant_id)).first()
+    return jsonify(owner=restaurant.owner_id)
 
+#get table name by id
+@api_stub.route('/restaurants/<table_id>/table_name')
+def get_table(table_id):
+    table = db.session.query(Table).filter(Table.id == int(table_id)).first()
+    return jsonify(table_name=table.table_name)
 
+#puts a notification for a generic user
+@api_stub.route('/users/notification',methods=['GET', 'PUT'])
+def notification():
+    notif_dict = json.loads(request.json())
+    user= db.session.query(User).filter(User.id == notif_dict["id"]).first()
+    notification_entry = Notification()
+    notification_entry.email = user.email
+    notification_entry.date = notif_dict["date"]
+    notification_entry.type_ = Notification.TYPE(notif_dict["type"])
+    notification_entry.message = notif_dict["message"]
+    notification_entry.user_id = user.id
+    db.session.add(notification_entry)
+    db.session.commit()
+    return
