@@ -197,7 +197,7 @@ def delete_reservation(reservation_id):
 
 # get all the reservation in which user is interested
 def get_user_reservations(user_id):
-    reservation_records = db_session.query(Reservation).filter_by(booker_id=user_id).all()
+    reservation_records = db_session.query(Reservation).filter_by(booker_id=user_id,cancelled=False).all()
     return [reservation.serialize() for reservation in reservation_records]
     '''
     user = requests.get('http://127.0.0.1:5000/users/'+str(user_id)) #ASK USERS 
