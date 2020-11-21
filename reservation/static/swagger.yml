@@ -57,6 +57,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Delete this reservation
+      summary: Delete this reservation
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+      operationId: views.reservation.delete_reservation
+      responses:
+        200:
+          description: The reservation is deleted
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     post:
       tags:
@@ -90,11 +112,6 @@ paths:
                 $ref: '#/components/schemas/Error'
 
 
-
-    #delete:
-    #  tags:
-    #    - Delete this reservation
-    #  summary: Delete this reservation
 
   /reservations/{reservation_id}/seats:
     get:
@@ -209,6 +226,12 @@ paths:
         200:
           description: The reservation is created
           content: {}
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'   
     
     #delete:
     #  tags:
@@ -216,8 +239,30 @@ paths:
     #  summary: Delete all the reservations made by this user
  
 
-  #TODO: confirm participants
-  #reservations/{reservation_id}/entrances:
+  /reservations/{reservation_id}/entrances:
+    
+    post:
+      tags:
+        - Confirm the entrances for this reservation
+      summary: Confirm the entrances for this reservation
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+      operationId: views.reservation.confirm_participants
+      responses:
+        200:
+          description: The entrances id confirmed
+          content: {}
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'   
 
 
 
@@ -237,6 +282,7 @@ components:
       - restaurant_id
       - table_id
       - seats
+      - places
       - date
       - cancelled
       type: object
@@ -261,6 +307,11 @@ components:
           type: Seat
           readOnly: false
           $ref: '#/components/schemas/Seat'
+        places:
+          minimum: 1
+          type: integer
+          readOnly: false
+          example: 123
         table_id:
           minimum: 1
           type: integer
