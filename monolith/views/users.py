@@ -278,7 +278,7 @@ def editreservation(reservation_id):
                 #curl -i -d "{'places':2, 'seats':[{'confirmed':false,'guests_email':'testONE@test.com','id':33,'reservation_id':1}]}" http://127.0.0.1:5000/reservations/1
                 d = dict(
                     places=new_places,
-                    seats=seat_query
+                    seats=seat_query,
                     booker_email = current_user.email
                 )
 

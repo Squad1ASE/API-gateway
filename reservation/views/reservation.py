@@ -146,12 +146,11 @@ def confirm_participants(reservation_id):
     # get the seats
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     for seat in seats:
-        if seat.confirmed == True:
-            # in this case the participants are already confirmed by the owner
-            return connexion.problem(403, 'Error', "Participants are already confirmed for this reservation")
-        seat.confirmed = True
-        #guests.append(seat.guests_email)
-    db.commit()
+        if seat.guests_email in r:
+            seat.confirmed = True
+        else:
+            seat.confirmed = False
+    db_session.commit()
     return 'Participants confirmed'
 
 
