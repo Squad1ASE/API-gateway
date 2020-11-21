@@ -119,6 +119,24 @@ class ReservationPeopleEmail(FlaskForm):
     places = f.IntegerField('places', validators=[DataRequired()])
     display = ['guest', 'places']
 
+
+
+class EmailForm(Form):
+    """Subform.
+
+    CSRF is disabled for this subform (using `Form` as parent class) because
+    it is never used by itself.
+    """
+
+    guest_email = f.StringField('email', validators=[Length(3, 64), Email()]) #to change between 10 and 64
+    #display = ['email']
+
+class EditReservationForm(FlaskForm):
+    places = f.IntegerField('places', validators=[DataRequired(), NumberRange(min=1)])    
+    guest = f.FieldList(f.FormField(EmailForm), min_entries=1, max_entries=100)
+    display = ['places']
+
+
 class ReservationRequest(FlaskForm):
     date = f.DateField('date', format='%d/%m/%Y', validators=[DataRequired()])
     time = f.DateField('time', format='%H:%M', validators=[DataRequired()])
@@ -148,3 +166,7 @@ class EditRestaurantForm(FlaskForm):
     #tables = f.FieldList(f.FormField(TableForm), min_entries=1, max_entries=100)
     dishes = f.FieldList(f.FormField(DishForm), min_entries=1, max_entries=100)
     display = ['phone']
+
+
+
+
