@@ -26,7 +26,7 @@ def _users():
     return render_template("users.html", users=users)
 
 
-@users.route('/create_user', methods=['GET', 'POST'])
+@users.route('/users/create_user', methods=['GET', 'POST'])
 def create_user():
     if current_user is not None and hasattr(current_user, 'id'):
         return make_response(render_template('error.html', message="You are already logged! Redirecting to home page", redirect_url="/"), 403)
@@ -43,7 +43,7 @@ def create_user():
             reply_json = reply.json()
 
             if reply.status_code == 200:
-            	return render_template('error.html', redirect_url="/")
+            	return render_template('error.html', message="User has been created", redirect_url="/")
             if reply.status_code == 409:
                 return render_template('create_user.html', form=form, message=reply_json['detail'])
         else:
@@ -53,7 +53,7 @@ def create_user():
     return render_template('create_user.html', form=form)
 
 
-@users.route('/edit_user_informations', methods=['GET', 'POST'])
+@users.route('/users/edit', methods=['GET', 'POST'])
 @login_required
 def edit_user():
 
@@ -78,6 +78,7 @@ def edit_user():
             reply_json = reply.json()
 
             if reply.status_code == 200:
+                # TODO this doesn't change the current_user phone
             	current_user.phone = edit_dict['user_new_phone']
             	return redirect('/')
             if reply.status_code == 401:
@@ -93,7 +94,7 @@ def edit_user():
         return render_template('edit_user.html', form=form, email=current_user.email)
 
 
-@users.route('/delete_user', methods=['GET','DELETE'])
+@users.route('/users/delete', methods=['GET','DELETE'])
 @login_required
 def delete_user():
 
@@ -125,7 +126,7 @@ def delete_user():
         redirect_url="/logout"), 200) 
 
 
-@users.route('/users/reservation_list', methods=['GET'])
+@users.route('/users/reservation', methods=['GET'])
 @login_required
 def reservation_list():
 
