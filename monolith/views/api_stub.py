@@ -1,4 +1,5 @@
 from flask import Blueprint, redirect, render_template, request, make_response, jsonify, Response
+
 from monolith.database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
 from monolith.auth import admin_required, current_user
 from flask_login import (current_user, login_user, logout_user,
@@ -96,14 +97,15 @@ def get_table(table_id):
 #puts a notification for a generic user
 @api_stub.route('/users/notification',methods=['GET', 'PUT'])
 def notification():
-    notif_dict = json.loads(request.json())
-    user= db.session.query(User).filter(User.id == notif_dict["id"]).first()
+    notif_dict = json.loads(request.json)
+    print(str(notif_dict['user_id']))
+    user= db.session.query(User).filter(User.id == int(notif_dict['user_id'])).first()
     notification_entry = Notification()
     notification_entry.email = user.email
-    notification_entry.date = notif_dict["date"]
-    notification_entry.type_ = Notification.TYPE(notif_dict["type"])
+    notification_entry.date = datetime.datetime.now()
+    notification_entry.type_ = Notification.TYPE(int(notif_dict["type"]))
     notification_entry.message = notif_dict["message"]
     notification_entry.user_id = user.id
     db.session.add(notification_entry)
     db.session.commit()
-    return
+    return "notified"
