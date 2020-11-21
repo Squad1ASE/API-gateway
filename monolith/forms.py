@@ -116,7 +116,8 @@ class SubReservationPeopleEmail(Form):
 
 class ReservationPeopleEmail(FlaskForm):
     guest = f.FieldList(f.FormField(SubReservationPeopleEmail), min_entries=1, max_entries=100)
-    display = ['guest']
+    places = f.IntegerField('places', validators=[DataRequired()])
+    display = ['guest', 'places']
 
 class ReservationRequest(FlaskForm):
     date = f.DateField('date', format='%d/%m/%Y', validators=[DataRequired()])

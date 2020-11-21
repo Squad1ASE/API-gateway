@@ -246,10 +246,11 @@ def edit_reservation(reservation_id):
             changed = False       
         if t['capacity'] > r['places']:
             tables.append(t)
-    if changed:    
+    if changed:
         if len(tables) == 0:
             return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
         else: # assign new table
+            old_res.places = r['places']
             old_res.table_id = None
 
             #date_str = old_res.date
