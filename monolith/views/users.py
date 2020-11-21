@@ -11,6 +11,9 @@ from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
 from monolith.views.restaurants import restaurant_delete
+import json
+from monolith.json_converter import user_to_json
+import requests
 
 users = Blueprint('users', __name__)
 
@@ -33,24 +36,16 @@ def create_user():
     if request.method == 'POST':
 
         if form.validate_on_submit():
+            
+            user = user_to_json(request.form.to_dict())
 
-            new_user = User()
-            form.populate_obj(new_user)
-            new_user.role = request.form['role']
-            check_already_register = db.session.query(User).filter(User.email == new_user.email).first()
-            
-            if(check_already_register is not None):
-                # already registered
-                return render_template('create_user.html', form=form), 403
-                
-            new_user.set_password(form.password.data) #pw should be hashed with some salt
-            
-            if new_user.role != 'customer' and new_user.role != 'owner':
-                return make_response(render_template('error.html', message="You can sign in only as customer or owner! Redirecting to home page", redirect_url="/"), 403)
-            
-            db.session.add(new_user)
-            db.session.commit()
-            return redirect('/')
+            reply = requests.put('http://127.0.0.1:5060/users', json=user)
+            reply_json = reply.json()
+
+            if reply.status_code == 200:
+            	return render_template('error.html', redirect_url="/")
+            if reply.status_code == 409:
+                return render_template('create_user.html', form=form, message=reply_json['detail'])
         else:
             # invalid form
             return make_response(render_template('create_user.html', form=form), 400)
@@ -63,23 +58,30 @@ def create_user():
 def edit_user():
 
     form = EditUserForm()
-    email = current_user.email
-    user = db.session.query(User).filter(User.email == email).first()
 
     if request.method == 'POST':
 
         if form.validate_on_submit():
 
-            password = form.data['old_password']
+            edit_dict = dict(
+                current_user_email=current_user.email,
+                current_user_old_password=form.data['old_password'],
+                current_user_new_password=form.data['new_password'],
+                user_new_phone=form.data['phone']
+            )
             
-            if (user is not None and user.authenticate(password)):
-                user.phone = form.data['phone']
-                user.set_password(form.data['new_password'])
-                db.session.commit()
-                return redirect('/logout')
-            
-            else:
-                form.old_password.errors.append("Invalid password.")
+            if(edit_dict['user_new_phone'] == current_user.phone and current_user_old_password == current_user_new_password):
+            	return redirect('/')
+
+
+            reply = requests.post('http://127.0.0.1:5060/users', json=edit_dict)
+            reply_json = reply.json()
+
+            if reply.status_code == 200:
+            	current_user.phone = edit_dict['user_new_phone']
+            	return redirect('/')
+            if reply.status_code == 401:
+                form.old_password.errors.append(reply_json['detail'])
                 return make_response(render_template('edit_user.html', form=form, email=current_user.email), 401)
 
         else:
@@ -87,7 +89,7 @@ def edit_user():
             return make_response(render_template('edit_user.html', form=form, email=current_user.email), 400)
 
     else:
-        form.phone.data = user.phone
+        form.phone.data = current_user.phone
         return render_template('edit_user.html', form=form, email=current_user.email)
 
 

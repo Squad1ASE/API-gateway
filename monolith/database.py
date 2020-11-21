@@ -34,28 +34,17 @@ class FormEnum(Enum):
 # the following consist of tables inside the db tables are defined using model
 class User(db.Model):
     __tablename__ = 'user'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
 
     email = db.Column(db.String, nullable=False, unique=True)  
-    @validates('email')
-    def validate_email(self, key, user):
-        if('@' and '.' in user): #min email possible: a@b.c
-            return user
-        raise SyntaxError('Wrong email syntax')
 
     phone = db.Column(db.Unicode(128), db.CheckConstraint('length(phone) > 0'), nullable=False)
 
     firstname = db.Column(db.Unicode(128))
     lastname = db.Column(db.Unicode(128))
-    password = db.Column(db.Unicode(128), nullable=False) 
     dateofbirth = db.Column(db.Date)
 
     role = db.Column(db.String, nullable=False) 
-    @validates('role')
-    def validate_role(self, key, user):
-        if(user == 'admin' or user == 'customer' or user == 'owner' or user == 'ha'):
-            return user
-        raise SyntaxError('Wrong role assignment')
 
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)
@@ -66,18 +55,10 @@ class User(db.Model):
         super(User, self).__init__(*args, **kw)
         self._authenticated = False
 
-    def set_password(self, password):
-        self.password = generate_password_hash(password)
-
     @property
     def is_authenticated(self):
         return self._authenticated
-
-    def authenticate(self, password):
-        checked = check_password_hash(self.password, password)
-        self._authenticated = checked  # it is true if the user password is correct
-        return self._authenticated
-
+        
     def get_id(self):
         return self.id
 
@@ -322,6 +303,8 @@ class Quarantine(db.Model):
 class Notification(db.Model):
     __tablename__ = 'notification'
 
+    # questa parte non serve, si può integrare dentro swagger direttamente
+    # si può usare direttamente come lista 
     class TYPE(FormEnum):
         contact_with_positive = 1
         reservation_canceled = 2
