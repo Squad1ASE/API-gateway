@@ -9,9 +9,9 @@ from datetime import timedelta
 #from app import delete_reservations_task
 import connexion
 import ast
+from api_call import get_tables, get_workingdays
 
-reservation = Blueprint('reservation', __name__)
-
+reservations = Blueprint('reservation', __name__)
 
 # get all the reservation
 def get_all_reservation():
@@ -44,11 +44,27 @@ def get_restaurant_reservations(restaurant_id):
     reservation_records = db_session.query(Reservation).filter(Reservation.restaurant_id == restaurant_id, Reservation.cancelled == False, Reservation.date >= datetime.datetime.now() - timedelta(hours=3)).all()
     return [reservation.serialize() for reservation in reservation_records]
 
+def convert_weekday(day):
+    if day == 'monday':
+        return 1
+    elif day == 'tuesday':
+        return 2
+    elif day == 'wednesday':
+        return 3
+    elif day == 'thursday':
+        return 4
+    elif day == 'friday':
+        return 5
+    elif day == 'saturday':
+        return 6
+    elif day == 'sunday':
+        return 7
 
 # create a reservation
 def create_reservation(user_id):
 
     r = request.json
+    print(r)
 
     date_str = r['date'] + ' ' + r['time']
     date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
@@ -57,14 +73,15 @@ def create_reservation(user_id):
     #restaurant = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id))
     # check if the day is open this day
     weekday = date.weekday() + 1
-    workingdays = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/workingdays').json()
-    #print(workingdays)
+    workingdays = get_workingdays(restaurant_id).json()
+    print(workingdays)
     workingday = None
     for w in workingdays:
-        wd = ast.literal_eval(w)
-        print(wd)
-        if wd['day'] == weekday:
-            workingday = wd
+        print(w)
+        #wd = ast.literal_eval(w)
+        print(w['day'], weekday)
+        if convert_weekday(w['day']) == weekday:
+            workingday = w
     if workingday is None:
         return connexion.problem(400, 'Error', 'Restaurant is not open this day!')
     
@@ -85,13 +102,13 @@ def create_reservation(user_id):
         return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
 
     # check if there is any table with this capacity
-    all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/tables').json()
+    all_tables = get_tables(restaurant_id).json()
     tables = []
     for table in all_tables:
-        t = ast.literal_eval(table)
-        print(t)
-        if t['capacity'] >= r['places']:
-            tables.append(t)
+        #t = ast.literal_eval(table)
+        print(table)
+        if table['capacity'] >= r['places']:
+            tables.append(table)
     if len(tables) == 0:
         return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
     

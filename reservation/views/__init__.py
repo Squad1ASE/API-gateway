@@ -1,3 +1,3 @@
-from .reservation import reservation
+from .reservation import reservations
 
-blueprints = [reservation]
+blueprints = [reservations]
