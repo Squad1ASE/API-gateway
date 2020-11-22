@@ -185,7 +185,7 @@ def restaurant_sheet(restaurant_id):
                         places = form.guests.data
                     )
                     #print(temp_dict)
-                    if requests.put('http://127.0.0.1:5100/reservations/users/'+str(current_user.id), json=temp_dict).status_code == 200:
+                    if requests.put('http://127.0.0.1:5100/reservations', json=temp_dict).status_code == 200:
                         return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
                     else:
                         return make_response(render_template('error.html', message="Error", redirect_url="/"), 403)

@@ -48,21 +48,26 @@ def send_reservation():
 import json
 
 def wday_to_json(wday):
-    w_dict = dict(
-        restaurant_id = wday.restaurant_id,
-        day = int(str(wday.day)),
-        work_shifts = wday.work_shifts
-    )
-    return json.dumps(w_dict)
+    #w_dict = dict(
+    #    restaurant_id = wday.restaurant_id,
+    #    day = int(str(wday.day)),
+    #    work_shifts = wday.work_shifts
+    #)
+    w_dict = {
+        'restaurant_id':wday.restaurant_id,
+        'day':int(str(wday.day)),
+        'work_shifts':wday.work_shifts
+    }
+    return w_dict
 
 def table_to_json(table):
-    t_dict = dict(
-        id = table.id,
-        restaurant_id = table.restaurant_id,
-        table_name = table.table_name,
-        capacity = table.capacity
-    )
-    return json.dumps(t_dict)
+    t_dict = {
+        'id' : table.id,
+        'restaurant_id' : table.restaurant_id,
+        'table_name' : table.table_name,
+        'capacity' : table.capacity
+    }
+    return t_dict
 
 @api_stub.route('/restaurants/<restaurant_id>/workingdays', methods=['GET'])
 def get_workingday(restaurant_id):

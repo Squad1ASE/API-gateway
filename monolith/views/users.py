@@ -136,25 +136,7 @@ def reservation_list():
         return make_response(
             render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
             403)
-
-    '''
-    reservation_records = db.session.query(Reservation).filter(
-        Reservation.booker_id == current_user.id, 
-        Reservation.cancelled == False,
-        Reservation.date >= datetime.datetime.now()
-    ).all()
-
-    data_dict = []
-    for reservation in reservation_records:
-        rest_name = db.session.query(Restaurant).filter_by(id = reservation.restaurant_id).first().name
-        temp_dict = dict(
-            restaurant_name = rest_name,
-            date = reservation.date,
-            reservation_id = reservation.id
-        )
-        data_dict.append(temp_dict)
-    '''
-    reservation_records = requests.get('http://localhost:5100/reservations/users/' + str(current_user.id)).json()
+    reservation_records = requests.get('http://localhost:5100/reservations?user_id=' + str(current_user.id)).json()
     data_dict=[]
     for reservation in reservation_records:
         temp_dict = dict(
