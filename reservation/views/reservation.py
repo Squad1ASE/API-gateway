@@ -1,6 +1,6 @@
 import requests
 from flask import Blueprint, jsonify, Response, request
-from database import db_session, Reservation, Seat
+from reservation.database import db_session, Reservation, Seat
 import datetime
 import json
 import time
@@ -9,7 +9,7 @@ from datetime import timedelta
 #from app import delete_reservations_task
 import connexion
 import ast
-from api_call import get_tables, get_workingdays
+from reservation.api_call import get_tables, get_workingdays
 
 reservations = Blueprint('reservation', __name__)
 
@@ -89,8 +89,9 @@ def create_reservation():
     workingdays = get_workingdays(restaurant_id).json()
     workingday = None
     for w in workingdays:
-        #if convert_weekday(w['day']) == weekday:
-        if w['day'] == weekday:
+        #TODO: this line if the day is in string format
+        if convert_weekday(w['day']) == weekday:
+        #if w['day'] == weekday:
             workingday = w
     if workingday is None:
         return connexion.problem(400, 'Error', 'Restaurant is not open this day!')

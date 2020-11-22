@@ -1,4 +1,5 @@
-import connexion, logging, database
+import connexion, logging
+from reservation import database
 from celery import Celery
 from flask import jsonify
 '''

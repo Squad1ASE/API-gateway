@@ -1,11 +1,11 @@
 import os
 from flask import Flask
-from monolith.database import ( db, User, Restaurant, Table, WorkingDay,
+from database import ( db, User, Restaurant, Table, WorkingDay,
                                 Reservation, Like, Seat, Review, 
                                 Dish, Quarantine, Notification )
-from monolith.views import blueprints
-from monolith.auth import login_manager
-from monolith.utilities import ( insert_ha, create_user_EP, user_login_EP, 
+from views import blueprints
+from auth import login_manager
+from utilities import ( insert_ha, create_user_EP, user_login_EP, 
                                 user_logout_EP, create_restaurant_EP, customers_example, 
                                 restaurant_example, admin_example, health_authority_example, 
                                 restaurant_owner_example )
