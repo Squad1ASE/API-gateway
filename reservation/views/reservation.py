@@ -9,6 +9,8 @@ from datetime import timedelta
 #from app import delete_reservations_task
 import connexion
 import ast
+import app
+#from app.application import delete_restaurant_reservations_task
 
 reservation = Blueprint('reservation', __name__)
 
@@ -167,37 +169,51 @@ def delete_reservation(reservation_id):
         if reservation.date < now:
             return connexion.problem(403, 'Error', "You can't delete a past reservation")
 
-        # todo chiamare task celery
-        # delete_reservations_task([reservation_id]).delay()
-        reservation.cancelled = True
-        db_session.commit()
 
-        seat_query = db_session.query(Seat).filter_by(reservation_id=reservation.id).all()
-
-        for seat in seat_query:
-            seat.confirmed = False
-        db_session.commit()
         res = requests.get('http://127.0.0.1:5000/restaurants/'+str(reservation.table_id)+'/table_name')
         table_name = (res.json())['table_name']
 
-        restaurant_owner_id = int((requests.get(
-            'http://127.0.0.1:5000/restaurants/' + str(reservation.restaurant_id) + '/owner').json())['owner'])
+        restaurant_owner_id = (requests.get(
+            'http://127.0.0.1:5000/restaurants/' + str(reservation.restaurant_id) + '/owner').json())['owner']
 
-        notification = {
-            "type":2,
-            "message":'The reservation of the ' + table_name + ' table for the date ' + str(
-                reservation.date) + ' has been canceled',
-            "user_id":restaurant_owner_id
-        }
+        reservation.cancelled = 'reservation_deleted'+' '+str(restaurant_owner_id)+' '+str(table_name)
+        db_session.commit()
 
-        requests.put('http://127.0.0.1:5000/users/notification', json=json.dumps(notification))
         return "The reservation is deleted"
     return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
+
+# delete all restaurant reservations
+def delete_restaurant_reservations(restaurant_id):
+    print('-----------------------')
+    restaurant_name = request.args.get('restaurant_name')
+    print('restaurant_name= ---------------'+str(restaurant_name))
+
+    reservations = db_session.query(Reservation).filter(
+        Reservation.restaurant_id == int(restaurant_id),
+    ).all()
+
+    for reservation in reservations:
+        reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
+        db_session.commit()
+
+    return "Restaurant reservations deleted"
+
+# delete all user reservations
+def delete_user_reservations(user_id):
+    reservations = db_session.query(Reservation).filter(
+        Reservation.booker_id == int(user_id),
+    ).all()
+
+    for reservation in reservations:
+        reservation.cancelled = 'user_deleted'
+        db_session.commit()
+    return "User reservations deleted"
+
 
 
 # get all the reservation in which user is interested
 def get_user_reservations(user_id):
-    reservation_records = db_session.query(Reservation).filter_by(booker_id=user_id,cancelled=False).all()
+    reservation_records = db_session.query(Reservation).filter_by(booker_id=user_id, cancelled=None).all()
     return [reservation.serialize() for reservation in reservation_records]
     '''
     user = requests.get('http://127.0.0.1:5000/users/'+str(user_id)) #ASK USERS 

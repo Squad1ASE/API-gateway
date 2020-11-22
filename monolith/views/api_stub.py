@@ -94,6 +94,7 @@ def get_table(table_id):
     table = db.session.query(Table).filter(Table.id == int(table_id)).first()
     return jsonify(table_name=table.table_name)
 
+
 #puts a notification for a generic user
 @api_stub.route('/users/notification',methods=['GET', 'PUT'])
 def notification():

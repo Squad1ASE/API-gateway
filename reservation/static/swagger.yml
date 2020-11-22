@@ -142,15 +142,35 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Reservation'
+    delete:
+      tags:
+        - Delete all reservations for this restaurant
+      summary: Delete all reservations for this restaurant
+      parameters:
+          - in: path
+            name: restaurant_id
+            schema:
+              type: integer
+            required: true
+            description: Numeric ID of the restaurant
+          - in: query
+            name: restaurant_name
+            description: Restaurant name
+            required: true
+            schema:
+              type: string
+      operationId: views.reservation.delete_restaurant_reservations
+      responses:
+        200:
+          description: Restaurant reservations deleted
+          content: {}
+
     #put:
     #  tags:
     #    - Create a reservation for this restaurant
     #  summary: Create a reservation for this restaurant
 
-    #delete:
-    #  tags:
-    #    - Delete all reservations for this restaurant
-    #  summary: Delete all reservations for this restaurant  
+
 
 
   /reservations/users/{user_id}: 
@@ -203,12 +223,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'   
-    
-    #delete:
-    #  tags:
-    #    - Delete all the reservations made by the user
-    #  summary: Delete all the reservations made by this user
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Delete all the reservations made by the user
+      summary: Delete all the reservations made by this user
+      parameters:
+        - in: path
+          name: user_id
+          schema:
+           type: integer
+          required: true
+          description: Numeric ID of the user
+      operationId: views.reservation.delete_user_reservations
+      responses:
+        200:
+          description: User reservations deleted
+          content: {}
+
  
 
   /reservations/{reservation_id}/entrances:

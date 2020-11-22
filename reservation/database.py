@@ -24,7 +24,6 @@ def init_db():
             example.table_id = 1
             example.date = datetime.datetime.strptime("10/10/2020 12:00", "%d/%m/%Y %H:%M")
             #datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
-            example.cancelled = False
             example.places = 2
             db_session.add(example)
             db_session.commit()
@@ -50,7 +49,7 @@ class Reservation(db):
     restaurant_id = Column(Integer)
     table_id = Column(Integer)
     date = Column(DateTime)
-    cancelled = Column(Boolean, default=False)
+    cancelled = Column(String, default=None) #restaurant_deleted/user_deleted/reservation_deleted
     places = Column(Integer)
     seats = relationship("Seat", cascade="all,delete,delete-orphan", backref="reservation")
 

@@ -114,12 +114,11 @@ def delete_user():
         for res in restaurants:
             restaurant_delete(res.id)
     else:
-        # first delete future reservations               
-        rs = db.session.query(Reservation).filter(
-            Reservation.booker_id == user_to_delete.id,
-            Reservation.date >= datetime.datetime.now()).all()
-        for r in rs:
-            deletereservation(r.id)
+        res = requests.delete('http://localhost:5100/reservations/users/' + str(user_to_delete.id)).status_code
+        if res == 200:
+            print('user reservations deleted correctly')
+        else:
+            print(str(res))
 
     user_to_delete.is_active = False
     db.session.commit()
