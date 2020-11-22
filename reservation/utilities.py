@@ -1,16 +1,26 @@
-def restaurant_reservations(test_client, restaurant_id):
+def restaurant_reservations_EP(test_client, restaurant_id):
     return test_client.get('/reservations?restaurant_id='+str(restaurant_id))
 
-def user_reservations(test_client, user_id):
+def user_reservations_EP(test_client, user_id):
     return test_client.get('/reservations?user_d='+str(user_id))
 
-def create_reservation(test_client, reservation):
+def create_reservation_EP(test_client, reservation):
     return test_client.put('/reservations', json=reservation)
 
-def confirm_participants(test_client, reservation_id, participants):
+def confirm_participants_EP(test_client, reservation_id, participants):
     return test_client.put('/reservations/'+str(reservation_id)+'/entrances', json=participants)
 
-reservation_example = temp_dict = dict(
+def edit_reservation_EP(test_client, reservation_id, info):
+    return test_client.post('/reservations/'+str(reservation_id), json=info)
+
+#TODO: def delete_reservation(test_client, reservation_id, )
+#TODO: def delete_all_restaurant_reservations(test_client, )
+#TODO: def delete_all_user_reservations(test_client, )
+
+#TODO: edit_reservation_example = dict()
+#TODO: participants_example = dict()
+
+reservation_example = dict(
     booker_id = 1,
     booker_email = 'userexample1@test.com',
     restaurant_id = 1,
@@ -19,6 +29,7 @@ reservation_example = temp_dict = dict(
     places = 2
 )
 
+'''
 workingdays_example = [{
         "day": "friday",
         "restaurant_id": 1,
@@ -47,9 +58,83 @@ workingdays_example = [{
             ]
         ]
 }]
+'''
 tables_example = [{
     'capacity':5,
     'id':1,
     'name':'yellow',
     'restaurant_id':1
 }]
+
+restaurant_example = {
+    "avg_rating": 0.0,
+    "avg_time_of_stay": 40,
+    "capacity": 5,
+    "cuisine_type": [
+        "italian",
+        "traditional"
+    ],
+    "dishes": [
+        {
+            "id": 1,
+            "ingredients": "tomato,mozzarella",
+            "name": "pizza",
+            "price": 4.5,
+            "restaurant_id": 1
+        },
+        {
+            "id": 2,
+            "ingredients": "pasta,tomato",
+            "name": "pasta",
+            "price": 6.5,
+            "restaurant_id": 1
+        }
+    ],
+    "id": 1,
+    "lat": 42.42,
+    "likes": 0,
+    "lon": 42.42,
+    "name": "My Pizza Restaurant",
+    "owner_id": 123,
+    "phone": "050123456",
+    "prec_measures": "Adopted the measures envisaged by the DPCM 'X'",
+    "tables": [
+        {
+            "capacity": 5,
+            "id": 1,
+            "name": "yellow",
+            "restaurant_id": 1
+        }
+    ],
+    "tot_reviews": 0,
+    "working_days": [
+        {
+            "day": "friday",
+            "restaurant_id": 1,
+            "work_shifts": [
+                [
+                    "12:00",
+                    "15:00"
+                ],
+                [
+                    "19:00",
+                    "23:00"
+                ]
+            ]
+        },
+        {
+            "day": "saturday",
+            "restaurant_id": 1,
+            "work_shifts": [
+                [
+                    "12:00",
+                    "15:00"
+                ],
+                [
+                    "19:00",
+                    "23:00"
+                ]
+            ]
+        }
+    ]
+}

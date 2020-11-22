@@ -6,10 +6,9 @@ import json
 import time
 from time import mktime
 from datetime import timedelta
-#from app import delete_reservations_task
 import connexion
 import ast
-from reservation.api_call import get_tables, get_workingdays
+from reservation.api_call import get_tables, get_workingdays, get_restaurant
 
 reservations = Blueprint('reservation', __name__)
 
@@ -83,10 +82,10 @@ def create_reservation():
     date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
     restaurant_id = r['restaurant_id']
     
-    #restaurant = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id))
+    restaurant = get_restaurant().json()
     # check if the day is open this day
     weekday = date.weekday() + 1
-    workingdays = get_workingdays(restaurant_id).json()
+    workingdays = restaurant['working_days']#get_workingdays(restaurant_id).json()
     workingday = None
     for w in workingdays:
         #TODO: this line if the day is in string format
@@ -113,7 +112,7 @@ def create_reservation():
         return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
 
     # check if there is any table with this capacity
-    all_tables = get_tables(restaurant_id).json()
+    all_tables = restaurant['tables']
     tables = []
     for table in all_tables:
         if table['capacity'] >= r['places']:
@@ -122,9 +121,8 @@ def create_reservation():
         return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
     
     # check if there is a table for this amount of time
-    #TODO: make it with the right amount of time
-    start_reservation = date - timedelta(minutes=15)#restaurant.avg_time_of_stay)
-    end_reservation = date + timedelta(minutes=15)#restaurant.avg_time_of_stay)
+    start_reservation = date - timedelta(minutes=restaurant['avg_time_of_stay'])
+    end_reservation = date + timedelta(minutes=restaurant['avg_time_of_stay'])
     reserved_table_records = db_session.query(Reservation).filter(
             Reservation.date >= start_reservation,
             Reservation.date <= end_reservation,

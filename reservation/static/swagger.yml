@@ -6,7 +6,6 @@ info:
 servers:
 - url: /
 paths:
-  
   /reservations: 
     get:
       tags:
@@ -99,7 +98,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
     delete:
       tags:
         - Remove all reservations
@@ -107,22 +105,19 @@ paths:
       operationId: reservation.views.reservation.delete_reservations
       parameters:
         - in: query
-          name: user_id
+          name: param
           schema:
             type: object
-            oneOf:
-              - properties:
-                  user_id:
-                    type: integer
-                required: [user_id]
-                #additionalProperties: false
-                description: ID of the user
-              - properties:
-                  restaurant_id:
-                    type: integer
-                required: [restaurant_id]
-                #additionalProperties: false
-                description: ID of the restaurant
+            properties:
+              user_id:
+                type: integer
+              restaurant_id:
+                type: integer
+            minProperties: 1
+            maxProperties: 1
+            additionalProperties: false
+          style: form
+          explode: true
       responses:
         200:
           description: Reservation successfully deleted
@@ -308,8 +303,12 @@ paths:
       operationId: reservation.views.reservation.confirm_participants
       responses:
         200:
-          description: The entrances id confirmed
-          content: {}
+          description: The entrances are updated
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: The entrances are updated
         400:
           description: Bad request
           content:
@@ -343,38 +342,38 @@ components:
           type: integer
           description: Unique identifier
           readOnly: true
-          example: 123
+          example: 1
         booker_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         restaurant_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         seats:
           type: Seat
-          readOnly: false
+          readOnly: true
           $ref: '#/components/schemas/Seat'
         places:
           minimum: 1
           type: integer
-          readOnly: false
-          example: 123
+          readOnly: true
+          example: 2
         table_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         date:
           type: date
           readOnly: true
           example: "12/10/2020 12:00"
         cancelled:
           type: boolean
-          readOnly: false
+          readOnly: true
           example: false
 
     Seat:
@@ -389,17 +388,18 @@ components:
           type: integer
           description: Unique identifier
           readOnly: true
-          example: 123
+          example: 1
         reservation_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         guests_email:
           type: string
           readOnly: true
-          example: guest@email.com
+          example: test@test.com
         confirmed:
+          minimum: 1
           type: boolean
           readOnly: false
           example: false    
@@ -433,11 +433,11 @@ components:
           minimum: 1
           type: integer
           writeOnly: false
-          example: 123
+          example: 2
         date:
           type: string
           writeOnly: true
-          example: "12/10/2020"
+          example: "21/11/2020"
         time:
           type: string
           writeOnly: true
@@ -458,7 +458,7 @@ components:
           minimum: 1
           type: array
           writeOnly: true
-          example: ['test1@test.com', 'test2@test.com']         
+          example: ['test@test.com', 'test2@test.com']      
 
        
   
