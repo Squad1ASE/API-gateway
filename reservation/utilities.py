@@ -29,6 +29,8 @@ reservation_example = dict(
     places = 2
 )
 
+#edit_reservation_example = dict()
+
 '''
 workingdays_example = [{
         "day": "friday",

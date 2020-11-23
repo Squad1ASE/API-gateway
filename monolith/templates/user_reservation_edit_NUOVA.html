@@ -8,6 +8,8 @@
 
   <h2>Edit your Reservation</h2>
 
+  <p>Booker email: {{current_user.email}}</p> 
+
   {# Import JQuery #}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 
@@ -50,7 +52,7 @@
     function removeForm(event) {
       var subformClass = event.data.param;
       var totForms = $('.' + subformClass).length;
-      if (totForms > 1) {
+      if (totForms > 0) {
         var $removedForm = $(this).closest('.' + subformClass);
         var removedIndex = parseInt($removedForm.data('index'));
 

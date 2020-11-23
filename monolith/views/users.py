@@ -181,15 +181,15 @@ def editreservation(reservation_id):
     if old_res:
         seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 
-        #for seat in seat_query:
-        #    if seat['guests_email'] == current_user.email:
-        #        seat_query.remove(seat)                    
+        for seat in seat_query:
+            if seat['guests_email'] == current_user.email:
+                seat_query.remove(seat)                    
 
 
         form = EditReservationForm()
         if request.method == 'POST':
             if form.validate_on_submit():                
-
+                print(form.data)
                 """
                 places_changed = form.data['places'] 
                 # value >=1 is checked through form validate()

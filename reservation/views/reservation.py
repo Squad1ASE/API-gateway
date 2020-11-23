@@ -22,14 +22,18 @@ def get_all_reservations():
     if 'restaurant_id' in request.args:
         cnt = cnt +1
         reservation_records = db_session.query(Reservation).filter_by(restaurant_id=request.args['restaurant_id']).all()
-    if 'start_date' in request.args:
-        cnt = cnt + 1
-        return
-        #TODO: convert in date and filter the search
-    if 'end_date' in request.args:
+    if 'start_date' in request.args and 'end_date' in request.args:
         cnt = cnt +1
-        return
-        #TODO: convert in date and filter the search
+        #TODO query filter
+    else: 
+        if 'start_date' in request.args:
+            cnt = cnt + 1
+            return
+            #TODO: convert in date and filter the search
+        elif 'end_date' in request.args:
+            cnt = cnt +1
+            return
+            #TODO: convert in date and filter the search
     if cnt == 0:
         reservation_records = db_session.query(Reservation).all()
     elif cnt > 1:
@@ -224,31 +228,38 @@ def edit_reservation(reservation_id):
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')    
 
     r = request.json # save all new seats data and places if changed
+    print(r)
 
     if r['places'] <= 0:
+        print(r['places'])
         return connexion.problem(400, 'Error', 'You cannot book for less people than your self!')
 
         
     if r['places'] != old_res.places: # change table_id only if places changed        
 
-        all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(old_res.restaurant_id)+'/tables').json()    
+        #all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(old_res.restaurant_id)+'/tables').json()    
+        restaurant = get_restaurant().json()
+        avg_time_of_stay = restaurant['avg_time_of_stay']
+        all_tables = restaurant['tables']
         tables = []
-        for table in all_tables:        
-            t = ast.literal_eval(table)
-            print(t)
-            if t['capacity'] > r['places'] :
-                tables.append(t)
+        found = False
+        for table in all_tables:
+            if table['capacity'] > r['places']:
+                if table['id'] == old_res.table_id:
+                    found = True
+                    break
+                else:
+                    tables.append(table)
 
-        if len(tables) == 0:
+        if len(tables) == 0 and found == False:
+            print(tables)
             return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
 
-        else: 
-
+        elif found == False: 
             date = old_res.date
             # check if there is a table for this amount of time
-            #TODO: make it with the right amount of time
-            start_reservation = date - timedelta(minutes=15)#restaurant.avg_time_of_stay)
-            end_reservation = date + timedelta(minutes=15)#restaurant.avg_time_of_stay)            
+            start_reservation = date - timedelta(minutes=avg_time_of_stay)
+            end_reservation = date + timedelta(minutes=avg_time_of_stay)         
             reserved_table_records = db_session.query(Reservation).filter(
                     Reservation.date >= start_reservation,
                     Reservation.date <= end_reservation,
@@ -262,24 +273,28 @@ def edit_reservation(reservation_id):
                     table_id_reservation = table['id']
                     break
             if table_id_reservation is None:
+                print(table_id_reservation)
                 return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
 
             else:
                 old_res.table_id = table_id_reservation
                 old_res.places = r['places']    
-                db_session.commit()       
+                db_session.commit()
 
 
     # change seats_emails --> remove all the olds and save the news (without booker_email)
 
     old_seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     for s in old_seats:
+        print(s.guests_email, r['booker_email'])
         if s.guests_email != r['booker_email']:
+
             db_session.delete(s)
             db_session.commit()
 
 
     for s in r['seats_email']: #get an array of new seats
+        print(s)
         #print(i['confirmed'])
         if s['guest_email'] != r['booker_email']:
 

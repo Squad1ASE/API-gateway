@@ -133,8 +133,8 @@ class EmailForm(Form):
 
 class EditReservationForm(FlaskForm):
     places = f.IntegerField('places', validators=[DataRequired(), NumberRange(min=1)])    
-    guest = f.FieldList(f.FormField(EmailForm), min_entries=1, max_entries=100)
-    display = ['places']
+    guest = f.FieldList(f.FormField(EmailForm), min_entries=0, max_entries=100)
+    display = ['places', 'guest']
 
 
 class ReservationRequest(FlaskForm):

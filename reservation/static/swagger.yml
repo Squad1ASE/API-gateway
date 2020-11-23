@@ -26,8 +26,6 @@ paths:
                 type: string
               end_date:
                 type: string
-            minProperties: 1
-            maxProperties: 1
             additionalProperties: false
           style: form
           explode: true
@@ -43,6 +41,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Reservation'
+        #TODO: error with wrong parameters
         500:
           description: Internal Server Error
           content:
@@ -159,6 +158,7 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
+          example: 1
       operationId: reservation.views.reservation.get_reservation
       responses:
         200:
@@ -206,6 +206,7 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
+          example: 1
       operationId: reservation.views.reservation.delete_reservation
       responses:
         200:
@@ -246,6 +247,7 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
+          example: 1
       operationId: reservation.views.reservation.edit_reservation
       requestBody:
         description: Reservation to edit
@@ -300,6 +302,7 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
+          example: 1
       operationId: reservation.views.reservation.confirm_participants
       responses:
         200:
@@ -315,6 +318,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'   
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -418,7 +427,7 @@ components:
           minimum: 1
           type: integer
           writeOnly: true
-          example: 123
+          example: 1
         booker_email:
           minimum: 1
           type: string
@@ -446,19 +455,25 @@ components:
     EditReservationRequest:
       required:
       - places
-      - seats
+      - seats_email
+      - booker_email
       type: object
       properties:
         places:
           minimum: 1
           type: integer
           writeOnly: true
-          example: 2
-        seats:
+          example: 3
+        seats_email:
           minimum: 1
           type: array
           writeOnly: true
-          example: ['test@test.com', 'test2@test.com']      
+          example: [{'guest_email':'test2@test.com'}, {'guest_email':'test3@test.com'}]
+        booker_email:
+          minimum: 1
+          writeOnly: true
+          example: 'test@test.com'
+           
 
        
   
