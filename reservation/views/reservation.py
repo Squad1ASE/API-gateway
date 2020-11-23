@@ -243,11 +243,18 @@ def edit_reservation(reservation_id):
     if old_res is None:
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')    
 
+    now = datetime.datetime.now()
+    if old_res.date < now:
+        return connexion.problem(400, 'Error', "You can't edit a past reservation")
+        
+
     r = request.json # save all new seats data and places if changed
-    print(r)
+    #print(r)
+
+    if len(r['seats_email']) + 1 > r['places']:
+        return connexion.problem(400, 'Error', 'You cannot have more emails than people!')
 
     if r['places'] <= 0:
-        print(r['places'])
         return connexion.problem(400, 'Error', 'You cannot book for less people than your self!')
 
         
@@ -301,7 +308,7 @@ def edit_reservation(reservation_id):
 
     old_seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     for s in old_seats:
-        print(s.guests_email, r['booker_email'])
+        #print(s.guests_email, r['booker_email'])
         if s.guests_email != r['booker_email']:
 
             db_session.delete(s)
@@ -309,7 +316,7 @@ def edit_reservation(reservation_id):
 
 
     for s in r['seats_email']: #get an array of new seats
-        print(s)
+        #print(s)
         #print(i['confirmed'])
         if s['guest_email'] != r['booker_email']:
 

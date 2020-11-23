@@ -43,6 +43,14 @@ reservation_example = dict(
     time = '12:00',
     places = 2
 )
+edit_reservation_example = {
+    'places':3,
+    'booker_email':'userexample1@test.com',
+    'seats_email': [
+        {'guest_email':'test@test.com'},
+        {'guest_email':'test2@test.com'}
+    ]
+}
 
 reservation_future_example = dict(
     booker_id = 2,
@@ -53,14 +61,39 @@ reservation_future_example = dict(
     places = 2
 )
 
-edit_reservation_example = {
+edit_reservation_future_example = {
     'places':3,
-    'booker_email':'userexample3@test.com',
+    'booker_email':'userexample1@test.com',
     'seats_email': [
         {'guest_email':'test@test.com'},
         {'guest_email':'test2@test.com'}
     ]
 }
+
+# places must be >= 1
+edit_ERROR_reservation_future_example = {
+    'places':0,
+    'booker_email':'userexample1@test.com',
+    'seats_email': []
+}
+# there are not tables with this amount of places
+edit_ERROR2_reservation_future_example = {
+    'places':25,
+    'booker_email':'userexample1@test.com',
+    'seats_email': []
+}
+
+# there are more emails than places
+edit_ERROR3_reservation_future_example = {
+    'places':1,
+    'booker_email':'userexample1@test.com',
+    'seats_email': [
+        {'guest_email':'test@test.com'}
+    ]
+}
+
+
+
 
 '''
 workingdays_example = [{
