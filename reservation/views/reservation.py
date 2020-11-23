@@ -41,7 +41,6 @@ def get_all_reservations():
 def get_reservation(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        # return Response('There is not a reservation with this ID', status=404)
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
 
@@ -50,7 +49,6 @@ def get_reservation(reservation_id):
 def get_seats(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        # return Response('There is not a reservation with this ID', status=404)
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     return [seat.serialize() for seat in seats]
@@ -170,10 +168,11 @@ def confirm_participants(reservation_id):
     # get the seats
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     for seat in seats:
-        if seat.guests_email in r:
-            seat.confirmed = True
-        else:
-            seat.confirmed = False
+        if seat.confirmed == True:
+            # in this case the participants are already confirmed by the owner
+            return connexion.problem(403, 'Error', "Participants are already confirmed for this reservation")
+        seat.confirmed = True
+        #guests.append(seat.guests_email)
     db_session.commit()
     return 'Participants confirmed'
 
@@ -220,37 +219,31 @@ def delete_reservation(reservation_id):
 #edit the reservation with specific id
 def edit_reservation(reservation_id):
 
-    # {'places':2}
-    # {'seats': [{-----}]}
-    #curl -i -d "{'places':2, 'seats':[{'confirmed':false,'guests_email':'testONE@test.com','id':33,'reservation_id':1}]}" http://127.0.0.1:5000/reservations/1
-
-
     old_res = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if old_res is None:
-        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
-    
+        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')    
 
     r = request.json # save all new seats data and places if changed
 
-    all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(old_res.restaurant_id)+'/tables').json()    
-    tables = []
-    changed = True
-    for table in all_tables:        
-        t = ast.literal_eval(table)
-        print(t)
-        if t['id'] == old_res.table_id and t['capacity'] == r['places']: #no table changes
-            changed = False       
-        if t['capacity'] > r['places']:
-            tables.append(t)
-    if changed:
+    if r['places'] <= 0:
+        return connexion.problem(400, 'Error', 'You cannot book for less people than your self!')
+
+        
+    if r['places'] != old_res.places: # change table_id only if places changed        
+
+        all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(old_res.restaurant_id)+'/tables').json()    
+        tables = []
+        for table in all_tables:        
+            t = ast.literal_eval(table)
+            print(t)
+            if t['capacity'] > r['places'] :
+                tables.append(t)
+
         if len(tables) == 0:
             return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
-        else: # assign new table
-            old_res.places = r['places']
-            old_res.table_id = None
 
-            #date_str = old_res.date
-            #date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
+        else: 
+
             date = old_res.date
             # check if there is a table for this amount of time
             #TODO: make it with the right amount of time
@@ -273,27 +266,32 @@ def edit_reservation(reservation_id):
 
             else:
                 old_res.table_id = table_id_reservation
+                old_res.places = r['places']    
+                db_session.commit()       
 
-    # case changed=False or len(tables)>0 change seat
+
+    # change seats_emails --> remove all the olds and save the news (without booker_email)
 
     old_seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     for s in old_seats:
-        db_session.delete(s)
+        if s.guests_email != r['booker_email']:
+            db_session.delete(s)
+            db_session.commit()
 
 
-    for s in r['seats']: #get an array of new seats
+    for s in r['seats_email']: #get an array of new seats
         #print(i['confirmed'])
+        if s['guest_email'] != r['booker_email']:
 
-        seat = Seat()
-        seat.reservation_id = old_res.id  #s['reservation_id']
-        seat.guests_email = s['guests_email']
-        seat.confirmed = s['confirmed']
+            seat = Seat()
+            seat.reservation_id = old_res.id  
+            seat.guests_email = s['guest_email']
+            seat.confirmed = False
 
-        old_res.seats.append(seat)
-        db_session.add(seat)
-        
+            old_res.seats.append(seat)
+            db_session.add(seat)
+            db_session.commit()
 
-    db_session.commit()        
     return 'Reservation is edited successfully'
 
 
