@@ -185,7 +185,7 @@ def delete_reservation(reservation_id):
         if reservation.date < now:
             return connexion.problem(403, 'Error', "You can't delete a past reservation")
         
-        restaurant = get_restaurant(restaurant_id).json()
+        restaurant = get_restaurant(reservation.restaurant_id).json()
 
         tables = restaurant['tables']
         table_name = None
