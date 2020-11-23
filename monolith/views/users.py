@@ -17,6 +17,8 @@ import requests
 
 users = Blueprint('users', __name__)
 
+USER_SERVICE = 'http://127.0.0.1:5060/'
+
 @users.route('/users')
 @login_required
 def _users():
@@ -26,7 +28,7 @@ def _users():
     return render_template("users.html", users=users)
 
 
-@users.route('/users/create_user', methods=['GET', 'POST'])
+@users.route('/users/create', methods=['GET', 'POST'])
 def create_user():
     if current_user is not None and hasattr(current_user, 'id'):
         return make_response(render_template('error.html', message="You are already logged! Redirecting to home page", redirect_url="/"), 403)
@@ -39,7 +41,7 @@ def create_user():
             
             user = user_to_json(request.form.to_dict())
 
-            reply = requests.put('http://127.0.0.1:5060/users', json=user)
+            reply = requests.put(USER_SERVICE+'users', json=user)
             reply_json = reply.json()
 
             if reply.status_code == 200:
@@ -74,7 +76,7 @@ def edit_user():
             	return redirect('/')
 
 
-            reply = requests.post('http://127.0.0.1:5060/users', json=edit_dict)
+            reply = requests.post(USER_SERVICE+'users', json=edit_dict)
             reply_json = reply.json()
 
             if reply.status_code == 200:
@@ -98,28 +100,8 @@ def edit_user():
 @login_required
 def delete_user():
 
-    if (current_user.role == 'ha'):
-        return make_response(render_template('error.html', 
-            message="HA not allowed to sign-out!", 
-            redirect_url="/"), 403)
-
-    user_to_delete = db.session.query(User).filter(User.id == current_user.id).first()
-
-    if user_to_delete.role == 'owner':
-        # delete first the restaurant and then treat it as a customer
-        restaurants = db.session.query(Restaurant).filter(Restaurant.owner_id == user_to_delete.id).all()
-        for res in restaurants:
-            restaurant_delete(res.id)
-    else:                
-        # first delete future reservations               
-        rs = db.session.query(Reservation).filter(
-            Reservation.booker_id == user_to_delete.id,
-            Reservation.date >= datetime.datetime.now()).all() 
-        for r in rs: 
-            deletereservation(r.id)
-    
-    user_to_delete.is_active = False
-    db.session.commit()
+	data = dict(current_user_email=current_user.email)
+	requests.post(USER_SERVICE+'users', json=data)
 
     return make_response(render_template('error.html', 
         message="Successfully signed out!",

@@ -9,6 +9,8 @@ from datetime import datetime
 
 auth = Blueprint('auth', __name__)
 
+USER_SERVICE = 'http://127.0.0.1:5060/'
+
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
@@ -25,7 +27,7 @@ def login():
                 password=form.data['password']
             )
 
-            reply = requests.post('http://127.0.0.1:5060/login', json=login_dict)
+            reply = requests.post(USER_SERVICE+'login', json=login_dict)
             reply_json = reply.json()
 
             if reply.status_code == 200:
@@ -39,6 +41,7 @@ def login():
                 user.role = reply_json['role']
                 user.is_admin = bool(reply_json['is_admin'])
                 user.is_anonymous = bool(reply_json['is_anonymous'])
+                user.notification = reply_json['notification']
                 
                 db.session.add(user)
                 db.session.commit()

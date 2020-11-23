@@ -55,14 +55,11 @@ def index():
 
           
         if current_user.role == 'customer':
-            notifications = db.session.query(Notification).filter(Notification.user_id == current_user.id).all()
-            return render_template("homepage_info.html", notifications=notifications)
+            return render_template("homepage_info.html", notifications=current_user.notification)
 
 
         if current_user.role == 'owner':
-            restaurants = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id)
-            notifications = db.session.query(Notification).filter(Notification.user_id == current_user.id).all()
-            return render_template("homepage_info.html", notifications=notifications, restaurants=restaurants) 
+            return render_template("homepage_info.html", notifications=current_user.notification, restaurants=restaurants) 
     else:
         return render_template("homepage.html") 
 
