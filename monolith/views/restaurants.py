@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, redirect, render_template, request, make_response
 from monolith.database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
 from monolith.auth import admin_required, current_user
@@ -207,28 +209,13 @@ def restaurant_delete(restaurant_id):
     if restaurant.owner_id != current_user.id:
         return make_response(render_template('error.html', message="You are not the restaurant's owner", redirect_url="/"), 403)
 
-    now = datetime.datetime.now()
-    reservations = db.session.query(Reservation).filter(
-        Reservation.date >= now, 
-        Reservation.restaurant_id == restaurant.id,
-        Reservation.cancelled == False
-        ).all()
-    if len(reservations) > 0:
-        for res in reservations:
-            notification = Notification()
-            notification.email = res.booker.email
-            notification.date = now
-            notification.type_ = Notification.TYPE(2)
-            timestamp = res.date.strftime("%d/%m/%Y, %H:%M")
-            notification.message = 'Your reservation of ' + timestamp + ' at restaurant ' + restaurant.name + ' has been canceled due to the restaurant closing'
-            notification.user_id = res.booker.id
-            db.session.add(notification)
-            res.cancelled = True
-        db.session.commit()
+    payload = {'restaurant_name':str(restaurant.name)}
+    res = requests.delete('http://localhost:5100/reservations/restaurants/'+str(restaurant_id),params=payload).status_code
+    if res == 200:
+        print('reservations deleted correctly')
+    else:
+        print(str(res))
 
-    reservations = db.session.query(Reservation).filter(Reservation.restaurant_id == restaurant.id).all()
-    for res in reservations:
-        db.session.delete(res)
     likes = db.session.query(Like).filter(Like.restaurant_id == restaurant.id).all()
     for like in likes:
         db.session.delete(like)

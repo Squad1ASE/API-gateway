@@ -99,6 +99,53 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       tags:
+        - Delete all reservations for this restaurant
+      summary: Delete all reservations for this restaurant
+      parameters:
+          - in: query
+            name: restaurant_id
+            schema:
+              type: integer
+            required: true
+            description: Numeric ID of the restaurant
+          - in: query
+            name: restaurant_name
+            description: Restaurant name
+            required: true
+            schema:
+              type: string
+            
+      operationId: views.reservation.delete_restaurant_reservations
+      responses:
+        200:
+          description: Restaurant reservations deleted
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      #TODO: differenziare caso ristorante utente
+      tags:
         - Remove all reservations
       summary: Delete reservations
       operationId: reservation.views.reservation.delete_reservations
@@ -262,32 +309,13 @@ paths:
           content:
             text/plain:
               schema:
-                type: string
-                example: Reservation successfully edited
-        404:
-          description: There is not a reservation with this ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "Request body is not valid JSON"
-                status: 400
-                title: "Bad Request"
-                type: "about:blank"
-        500:
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+    
 
   /reservations/{reservation_id}/entrances:
     
