@@ -101,6 +101,13 @@ restaurant_example = {
 def send_restaurant():
     return restaurant_example
 
+
+@api_stub.route('/stub/restaurants/name')
+def get_owner(restaurant_id):
+    return restaurant_example['name']
+
+'''
+
 @api_stub.route('/stub/send_reservation')
 def send_reservation():
     temp_dict = dict(
@@ -155,6 +162,8 @@ def get_tables(restaurant_id):
         tables.append(table_to_json(t))
     return jsonify(tables)
 
+    return jsonify(owner=restaurant.owner_id)
+
 
 #get owner by restaurant id
 @api_stub.route('/restaurants/<restaurant_id>/owner')
@@ -168,7 +177,7 @@ def get_table(table_id):
     table = db.session.query(Table).filter(Table.id == int(table_id)).first()
     return jsonify(table_name=table.table_name)
 
-
+'''
 #puts a notification for a generic user
 @api_stub.route('/users/notification',methods=['GET', 'PUT'])
 def notification():
@@ -184,3 +193,4 @@ def notification():
     db.session.add(notification_entry)
     db.session.commit()
     return "notified"
+

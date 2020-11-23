@@ -182,13 +182,15 @@ def editreservation(reservation_id):
 
         for seat in seat_query:
             if seat['guests_email'] == current_user.email:
-                seat_query.remove(seat)                    
+                seat_query.remove(seat)                 
 
 
         form = EditReservationForm()
         if request.method == 'POST':
-            if form.validate_on_submit():                
-                print(form.data)
+            if form.validate_on_submit():
+                if len(form.data['guest']) + 1 > form.data['places']:
+                    return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='Too much guests!'), 400)
+
                 """
                 places_changed = form.data['places'] 
                 # value >=1 is checked through form validate()
@@ -217,18 +219,17 @@ def editreservation(reservation_id):
 
             else:
                 #invalid form
-                return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id), 400)
+                return make_response(render_template('user_reservation_edit_NUOVA.html', form=form), 400)
 
 
         else:
             # in the GET we fill all the fields with the old values
-            form['places'].data = old_res['places']    
-
-            for idx, seat in enumerate(seat_query):                
-                if idx > 0:
+            form['places'].data = old_res['places']
+            if len(seat_query) > 0:
+                for idx, seat in enumerate(seat_query):    
                     email_form = EmailForm()
-                    form.guest.append_entry(email_form)                
-                form.guest[idx].guest_email.data = seat['guests_email']
+                    form.guest.append_entry(email_form)       
+                    form.guest[idx].guest_email.data = seat['guests_email']
 
             return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
     

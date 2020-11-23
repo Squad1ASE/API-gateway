@@ -20,12 +20,16 @@ paths:
             properties:
               user_id:
                 type: integer
+                example: 1
               restaurant_id:
                 type: integer
-              start_date:
+                example: 1
+              start:
                 type: string
-              end_date:
+                example: '2020-11-20T12:00'
+              end:
                 type: string
+                example: '2020-11-30T12:00'
             additionalProperties: false
           style: form
           explode: true
@@ -103,19 +107,20 @@ paths:
       summary: Delete all reservations for this restaurant
       parameters:
           - in: query
-            name: restaurant_id
-            schema:
-              type: integer
-            required: true
-            description: Numeric ID of the restaurant
-          - in: query
-            name: restaurant_name
-            description: Restaurant name
+            name: param
             required: true
             schema:
-              type: string
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                restaurant_id:
+                  type: integer
+              additionalProperties: false
+            style: form
+            explode: true
             
-      operationId: views.reservation.delete_restaurant_reservations
+      operationId: reservation.views.reservation.delete_reservations
       responses:
         200:
           description: Restaurant reservations deleted
@@ -143,55 +148,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    delete:
-      #TODO: differenziare caso ristorante utente
-      tags:
-        - Remove all reservations
-      summary: Delete reservations
-      operationId: reservation.views.reservation.delete_reservations
-      parameters:
-        - in: query
-          name: param
-          schema:
-            type: object
-            properties:
-              user_id:
-                type: integer
-              restaurant_id:
-                type: integer
-            minProperties: 1
-            maxProperties: 1
-            additionalProperties: false
-          style: form
-          explode: true
-      responses:
-        200:
-          description: Reservation successfully deleted
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: Reservation successfully placed
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              example:
-                detail: "Request body is not valid JSON"
-                status: 400
-                title: "Bad Request"
-                type: "about:blank"
-        500:
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          
-
-
 
   /reservations/{reservation_id}:
     get:
@@ -409,9 +365,9 @@ components:
           readOnly: true
           example: "12/10/2020 12:00"
         cancelled:
-          type: boolean
+          type: string
           readOnly: true
-          example: false
+          example: null
 
     Seat:
       required:

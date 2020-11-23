@@ -8,17 +8,20 @@ def create_reservation_EP(test_client, reservation):
     return test_client.put('/reservations', json=reservation)
 
 def confirm_participants_EP(test_client, reservation_id, participants):
-    return test_client.put('/reservations/'+str(reservation_id)+'/entrances', json=participants)
+    return test_client.post('/reservations/'+str(reservation_id)+'/entrances', json=participants)
 
 def edit_reservation_EP(test_client, reservation_id, info):
     return test_client.post('/reservations/'+str(reservation_id), json=info)
 
-#TODO: def delete_reservation(test_client, reservation_id, )
-#TODO: def delete_all_restaurant_reservations(test_client, )
-#TODO: def delete_all_user_reservations(test_client, )
+def delete_reservation_EP(test_client, reservation_id):
+    return test_client.delete('/reservations/'+str(reservation_id))
 
-#TODO: edit_reservation_example = dict()
-#TODO: participants_example = dict()
+#TODO: def delete_all_reservations(test_client, )
+
+participants_example = [
+    'userexample3@test.com',
+    'test@test.com'
+]
 
 reservation_example = dict(
     booker_id = 1,
@@ -29,7 +32,14 @@ reservation_example = dict(
     places = 2
 )
 
-#edit_reservation_example = dict()
+edit_reservation_example = {
+    'places':3,
+    'booker_email':'userexample3@test.com',
+    'seats_email': [
+        {'guest_email':'test@test.com'},
+        {'guest_email':'test2@test.com'}
+    ]
+}
 
 '''
 workingdays_example = [{

@@ -10,38 +10,28 @@ import connexion
 import ast
 import reservation.app
 #from app.application import delete_restaurant_reservations_task
-from reservation.api_call import get_tables, get_workingdays, get_restaurant
+from reservation.api_call import get_restaurant
+import dateutil.parser
 
 reservations = Blueprint('reservation', __name__)
 
 # get all the reservation
 def get_all_reservations():
-    reservation_records = []
-    cnt = 0
-    #TODO: filter if reservation is cancelled (is None)
+    q = db_session.query(Reservation).filter_by(cancelled=None)
     if 'user_id' in request.args:
-        cnt = cnt + 1
-        reservation_records = db_session.query(Reservation).filter_by(booker_id=request.args['user_id'], cancelled=None).all()
+        q = q.filter_by(booker_id=request.args['user_id'])
     if 'restaurant_id' in request.args:
-        cnt = cnt + 1
-        reservation_records = db_session.query(Reservation).filter_by(restaurant_id=request.args['restaurant_id'], cancelled=None).all()
-    if 'start_date' in request.args and 'end_date' in request.args:
-        cnt = cnt + 1
-        #TODO query filter
-    else: 
-        if 'start_date' in request.args:
-            cnt = cnt + 1
-            return
-            #TODO: convert in date and filter the search
-        elif 'end_date' in request.args:
-            cnt = cnt +1
-            return
-            #TODO: convert in date and filter the search
-    if cnt == 0:
-        reservation_records = db_session.query(Reservation).all()
-    elif cnt > 1:
-        return connexion.problem(400, 'Bad Request', 'Too much arguments in the query')
-    return [reservation.serialize() for reservation in reservation_records]
+        q = q.filter_by(restaurant_id=request.args['restaurant_id'])
+    if 'start' in request.args:
+        #DATE: 2020-11-22T12:00:00
+        start = request.args['start']
+        start = dateutil.parser.isoparse(start)
+        q = q.filter(Reservation.date >= start)
+    if 'end' in request.args:
+        end = request.args['end']
+        end = dateutil.parser.isoparse(end)
+        q = q.filter(Reservation.date <= end)
+    return [reservation.serialize() for reservation in q.all()]
 
 
 # get the reservation with specific id
@@ -87,7 +77,7 @@ def create_reservation():
     date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
     restaurant_id = r['restaurant_id']
     
-    restaurant = get_restaurant().json()
+    restaurant = get_restaurant(restaurant_id).json()
     # check if the day is open this day
     weekday = date.weekday() + 1
     workingdays = restaurant['working_days']#get_workingdays(restaurant_id).json()
@@ -131,7 +121,7 @@ def create_reservation():
     reserved_table_records = db_session.query(Reservation).filter(
             Reservation.date >= start_reservation,
             Reservation.date <= end_reservation,
-            Reservation.cancelled == False
+            Reservation.cancelled == None
         ).all()
     reserved_table_ids = [reservation.table_id for reservation in reserved_table_records]
     tables.sort(key=lambda x: x['capacity'])
@@ -175,11 +165,10 @@ def confirm_participants(reservation_id):
     # get the seats
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     for seat in seats:
-        if seat.confirmed == True:
-            # in this case the participants are already confirmed by the owner
-            return connexion.problem(403, 'Error', "Participants are already confirmed for this reservation")
-        seat.confirmed = True
-        #guests.append(seat.guests_email)
+        if seat.guests_email in r:
+            seat.confirmed = True
+        else:
+            seat.confirmed = False
     db_session.commit()
     return 'Participants confirmed'
 
@@ -195,46 +184,56 @@ def delete_reservation(reservation_id):
         now = datetime.datetime.now()
         if reservation.date < now:
             return connexion.problem(403, 'Error', "You can't delete a past reservation")
+        
+        restaurant = get_restaurant(restaurant_id).json()
 
+        tables = restaurant['tables']
+        table_name = None
+        for t in tables:
+            if t['id'] == reservation.table_id:
+                table_name = t['name']
+        #res = requests.get('http://127.0.0.1:5000/restaurants/'+str(reservation.table_id)+'/table_name')
+        #table_name = (res.json())['table_name']
 
-        res = requests.get('http://127.0.0.1:5000/restaurants/'+str(reservation.table_id)+'/table_name')
-        table_name = (res.json())['table_name']
-
-        restaurant_owner_id = (requests.get(
-            'http://127.0.0.1:5000/restaurants/' + str(reservation.restaurant_id) + '/owner').json())['owner']
-
-        reservation.cancelled = 'reservation_deleted'+' '+str(restaurant_owner_id)+' '+str(table_name)
+        restaurant_owner_id = restaurant['owner_id']
+        
+        
+        reservation.cancelled = 'reservation_deleted'#+' '+str(restaurant_owner_id)+' '+str(table_name)
         db_session.commit()
 
         return "The reservation is deleted"
     return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
 
-# delete all restaurant reservations
-def delete_restaurant_reservations(restaurant_id):
-    print('-----------------------')
-    restaurant_name = request.args.get('restaurant_name')
-    print('restaurant_name= ---------------'+str(restaurant_name))
+def delete_reservations():
+    if 'restaurant_id' in request.args and 'user_id' in request.args:
+        return connexion.problem('400', 'Error', 'Too much query arguments')
+    elif 'user_id' in request.args:
+        user_id = request.args.get('user_id')
+        reservations = db_session.query(Reservation).filter(
+            Reservation.booker_id == int(user_id),
+        ).all()
 
-    reservations = db_session.query(Reservation).filter(
-        Reservation.restaurant_id == int(restaurant_id),
-    ).all()
+        for reservation in reservations:
+            reservation.cancelled = 'user_deleted'
+            db_session.commit()
+        return "User reservations deleted"
+    elif 'restaurant_id' in request.arg:
+        restaurant_id = request.args.get('restaurant_id')
+        restaurant_name = get_restaurant_name(restaurant_id).json()
 
-    for reservation in reservations:
-        reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
-        db_session.commit()
+        reservations = db_session.query(Reservation).filter(
+            Reservation.restaurant_id == int(restaurant_id),
+        ).all()
 
-    return "Restaurant reservations deleted"
+        for reservation in reservations:
+            reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
+            db_session.commit()
 
-# delete all user reservations
-def delete_user_reservations(user_id):
-    reservations = db_session.query(Reservation).filter(
-        Reservation.booker_id == int(user_id),
-    ).all()
+        return "Restaurant reservations deleted"
+    else:
+        return connexion.problem('400', 'Error', 'You must specify an ID')
 
-    for reservation in reservations:
-        reservation.cancelled = 'user_deleted'
-        db_session.commit()
-    return "User reservations deleted"
+    
 
 
 #edit the reservation with specific id
@@ -253,9 +252,8 @@ def edit_reservation(reservation_id):
 
         
     if r['places'] != old_res.places: # change table_id only if places changed        
-
-        #all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(old_res.restaurant_id)+'/tables').json()    
-        restaurant = get_restaurant().json()
+  
+        restaurant = get_restaurant(old_res.restaurant_id).json()
         avg_time_of_stay = restaurant['avg_time_of_stay']
         all_tables = restaurant['tables']
         tables = []
@@ -280,7 +278,7 @@ def edit_reservation(reservation_id):
             reserved_table_records = db_session.query(Reservation).filter(
                     Reservation.date >= start_reservation,
                     Reservation.date <= end_reservation,
-                    Reservation.cancelled == False
+                    Reservation.cancelled == None
                 ).all()
             reserved_table_ids = [reservation.table_id for reservation in reserved_table_records]
             tables.sort(key=lambda x: x['capacity'])
@@ -295,10 +293,10 @@ def edit_reservation(reservation_id):
 
             else:
                 old_res.table_id = table_id_reservation
-                old_res.places = r['places']    
                 db_session.commit()
 
-
+        old_res.places = r['places']    
+        db_session.commit()
     # change seats_emails --> remove all the olds and save the news (without booker_email)
 
     old_seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()

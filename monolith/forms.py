@@ -128,13 +128,13 @@ class EmailForm(Form):
     it is never used by itself.
     """
 
-    guest_email = f.StringField('email', validators=[Length(3, 64), Email()]) #to change between 10 and 64
+    guest_email = f.StringField('Email', validators=[Length(3, 64), Email()]) #to change between 10 and 64
     #display = ['email']
 
 class EditReservationForm(FlaskForm):
-    places = f.IntegerField('places', validators=[DataRequired(), NumberRange(min=1)])    
-    guest = f.FieldList(f.FormField(EmailForm), min_entries=0, max_entries=100)
-    display = ['places', 'guest']
+    places = f.IntegerField('Places', validators=[DataRequired(), NumberRange(min=1)])    
+    guest = f.FieldList(f.FormField(EmailForm))
+    display = ['places']
 
 
 class ReservationRequest(FlaskForm):

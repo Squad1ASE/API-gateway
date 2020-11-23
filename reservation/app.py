@@ -2,13 +2,13 @@ import datetime
 import json
 
 import connexion, logging
+from reservation import database
 import requests
 from celery import Celery
 from flask import jsonify
 
-from database import db_session, Reservation, Seat
+from reservation.database import db_session, Reservation, Seat
 
-from reservation import database
 logging.basicConfig(level=logging.INFO)
 database.init_db()
 app = connexion.App(__name__, specification_dir='static/')
@@ -66,7 +66,7 @@ def hello():
 @celery.task()
 def delete_reservations_task():
 
-    reservations=db_session.query(Reservation).filter(Reservation.cancelled!=None).all()
+    reservations=db_session.query(Reservation).filter(Reservation.cancelled != None).all()
     for reservation in reservations:
         notification = {}
         tipo = reservation.cancelled.split()

@@ -209,8 +209,8 @@ def restaurant_delete(restaurant_id):
     if restaurant.owner_id != current_user.id:
         return make_response(render_template('error.html', message="You are not the restaurant's owner", redirect_url="/"), 403)
 
-    payload = {'restaurant_name':str(restaurant.name)}
-    res = requests.delete('http://localhost:5100/reservations/restaurants/'+str(restaurant_id),params=payload).status_code
+    #payload = {'restaurant_name':str(restaurant.name)}
+    res = requests.delete('http://localhost:5100/reservations?restaurant_id='+str(restaurant_id)).status_code
     if res == 200:
         print('reservations deleted correctly')
     else:
@@ -580,7 +580,8 @@ def confirm_participants(restaurant_id, reservation_id):
         return make_response(render_template('error.html', message="You are not the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
 
     # check if the reservation is in the past or in the future
-    seats = requests.get('http://127.0.0.1:5100/reservations/'+str(reservation_id)+'/seats').json()
+    res = requests.get('http://127.0.0.1:5100/reservations/'+str(reservation_id)).json()
+    seats = res['seats']
 
     class ConfirmedSeatFormTest(FlaskForm):
         guests = f.FieldList(f.BooleanField())
