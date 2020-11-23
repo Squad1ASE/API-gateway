@@ -24,16 +24,85 @@ import requests
 
 api_stub = Blueprint('api_stub', __name__)
 
+restaurant_example = {
+    "avg_rating": 0.0,
+    "avg_time_of_stay": 40,
+    "capacity": 5,
+    "cuisine_type": [
+        "italian",
+        "traditional"
+    ],
+    "dishes": [
+        {
+            "id": 1,
+            "ingredients": "tomato,mozzarella",
+            "name": "pizza",
+            "price": 4.5,
+            "restaurant_id": 1
+        },
+        {
+            "id": 2,
+            "ingredients": "pasta,tomato",
+            "name": "pasta",
+            "price": 6.5,
+            "restaurant_id": 1
+        }
+    ],
+    "id": 1,
+    "lat": 42.42,
+    "likes": 0,
+    "lon": 42.42,
+    "name": "My Pizza Restaurant",
+    "owner_id": 123,
+    "phone": "050123456",
+    "prec_measures": "Adopted the measures envisaged by the DPCM 'X'",
+    "tables": [
+        {
+            "capacity": 5,
+            "id": 1,
+            "name": "yellow",
+            "restaurant_id": 1
+        }
+    ],
+    "tot_reviews": 0,
+    "working_days": [
+        {
+            "day": "friday",
+            "restaurant_id": 1,
+            "work_shifts": [
+                [
+                    "12:00",
+                    "15:00"
+                ],
+                [
+                    "19:00",
+                    "23:00"
+                ]
+            ]
+        },
+        {
+            "day": "saturday",
+            "restaurant_id": 1,
+            "work_shifts": [
+                [
+                    "12:00",
+                    "15:00"
+                ],
+                [
+                    "19:00",
+                    "23:00"
+                ]
+            ]
+        }
+    ]
+}
+
+@api_stub.route('/stub/restaurant')
+def send_restaurant():
+    return restaurant_example
+
 @api_stub.route('/stub/send_reservation')
 def send_reservation():
-    '''
-    example = Reservation()
-    example.booker_id = 1
-    example.restaurant_id = 1
-    example.table_id = 1
-    example.date = datetime.datetime.strptime("10/10/2020 12:00", "%d/%m/%Y %H:%M")
-    example.cancelled = False
-    '''
     temp_dict = dict(
                     
                     booker_id=2,
@@ -48,21 +117,26 @@ def send_reservation():
 import json
 
 def wday_to_json(wday):
-    w_dict = dict(
-        restaurant_id = wday.restaurant_id,
-        day = int(str(wday.day)),
-        work_shifts = wday.work_shifts
-    )
-    return json.dumps(w_dict)
+    #w_dict = dict(
+    #    restaurant_id = wday.restaurant_id,
+    #    day = int(str(wday.day)),
+    #    work_shifts = wday.work_shifts
+    #)
+    w_dict = {
+        'restaurant_id':wday.restaurant_id,
+        'day':int(str(wday.day)),
+        'work_shifts':wday.work_shifts
+    }
+    return w_dict
 
 def table_to_json(table):
-    t_dict = dict(
-        id = table.id,
-        restaurant_id = table.restaurant_id,
-        table_name = table.table_name,
-        capacity = table.capacity
-    )
-    return json.dumps(t_dict)
+    t_dict = {
+        'id' : table.id,
+        'restaurant_id' : table.restaurant_id,
+        'table_name' : table.table_name,
+        'capacity' : table.capacity
+    }
+    return t_dict
 
 @api_stub.route('/restaurants/<restaurant_id>/workingdays', methods=['GET'])
 def get_workingday(restaurant_id):

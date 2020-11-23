@@ -1,13 +1,14 @@
 import datetime
 import json
 
-import connexion, logging, database
+import connexion, logging
 import requests
 from celery import Celery
 from flask import jsonify
 
 from database import db_session, Reservation, Seat
 
+from reservation import database
 logging.basicConfig(level=logging.INFO)
 database.init_db()
 app = connexion.App(__name__, specification_dir='static/')
@@ -15,6 +16,19 @@ app.add_api('swagger.yml')
 
 # set the WSGI application callable to allow using uWSGI:
 # uwsgi --http :8080 -w app
+application = app.app
+
+
+def create_app():
+    logging.basicConfig(level=logging.INFO)
+    app = connexion.App(__name__, specification_dir='static/')
+    app.add_api('swagger.yml')
+    database.init_db()
+    return app
+
+# set the WSGI application callable to allow using uWSGI:
+# uwsgi --http :8080 -w app
+app = create_app()
 application = app.app
 
 def make_celery(app):

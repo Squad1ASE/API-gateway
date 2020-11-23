@@ -6,7 +6,7 @@ from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form
 from wtforms.validators import DataRequired, Length, Email, NumberRange
-from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail
+from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
@@ -135,25 +135,7 @@ def reservation_list():
         return make_response(
             render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
             403)
-
-    '''
-    reservation_records = db.session.query(Reservation).filter(
-        Reservation.booker_id == current_user.id, 
-        Reservation.cancelled == False,
-        Reservation.date >= datetime.datetime.now()
-    ).all()
-
-    data_dict = []
-    for reservation in reservation_records:
-        rest_name = db.session.query(Restaurant).filter_by(id = reservation.restaurant_id).first().name
-        temp_dict = dict(
-            restaurant_name = rest_name,
-            date = reservation.date,
-            reservation_id = reservation.id
-        )
-        data_dict.append(temp_dict)
-    '''
-    reservation_records = requests.get('http://localhost:5100/reservations/users/' + str(current_user.id)).json()
+    reservation_records = requests.get('http://localhost:5100/reservations?user_id=' + str(current_user.id)).json()
     data_dict=[]
     for reservation in reservation_records:
         temp_dict = dict(
@@ -186,76 +168,71 @@ def deletereservation(reservation_id):
             render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
 
 
-@users.route('/users/editreservation/<reservation_id>', methods=['GET', 'POST'])
+@users.route('/users/editreservation/<reservation_id>', methods=['GET','POST'])
 @login_required
 def editreservation(reservation_id):
+
     if (current_user.role == 'ha' or current_user.role == 'owner'):
-        return make_response(
-            render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
-            403)
+        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
-    q = db.session.query(Reservation).filter(Reservation.id == reservation_id,
-                                             Reservation.booker_id == current_user.id).first()
+    old_res = requests.get('http://localhost:5100/reservations/'+str(reservation_id)).json()        
 
-    if q is not None:
-
-        seat_query = db.session.query(Seat).filter(Seat.reservation_id == q.id,
-                                                   Seat.guests_email != current_user.email).order_by(Seat.id).all()
-        table = db.session.query(Table).filter(Table.id == q.table_id).first()
-
-        guests_email_list = list()
+    if old_res:
+        seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 
         for seat in seat_query:
-            guests_email_list.append(seat.guests_email)
+            if seat['guests_email'] == current_user.email:
+                seat_query.remove(seat)                    
 
-        class ReservationForm(FlaskForm):
-            pass
 
-        guests_field_list = []
-        for idx in range(table.capacity - 1):
-            setattr(ReservationForm, 'guest' + str(idx + 1), f.StringField('guest ' + str(idx + 1) + ' email'))
-            guests_field_list.append('guest' + str(idx + 1))
-
-        setattr(ReservationForm, 'display', guests_field_list)
-
-        form = ReservationForm()
-
+        form = EditReservationForm()
         if request.method == 'POST':
+            if form.validate_on_submit():                
+                print(form.data)
+                """
+                places_changed = form.data['places'] 
+                # value >=1 is checked through form validate()
 
-            if form.validate_on_submit():
+                # correct email values are checked through form validate()
 
-                for idx, emailField in enumerate(guests_field_list):
-                    # checking if already inserted guests email have been changed
-                    if (idx < len(guests_email_list)):
-                        if (form[emailField].data != guests_email_list[idx]):
-                            if not form[emailField].data:
-                                db.session.delete(seat_query[idx])
-                            else:
-                                seat_query[idx].guests_email = form[emailField].data
+                print('I have the following new emails', form.data['guest'])
+                for g in form.data['guest']:
+                    print('each email:', g)
+                """
 
-                        db.session.commit()
+                d = dict(
+                    places=form.data['places'],
+                    seats_email=form.data['guest'],
+                    booker_email = current_user.email
+                )
 
-                    # checking if customer added new guests (if seats available)
-                    else:
-                        if form[emailField].data != "":
-                            seat = Seat()
-                            seat.reservation_id = reservation_id
-                            seat.guests_email = form[emailField].data
-                            seat.confirmed = False
+                data = requests.post('http://localhost:5100/reservations/'+str(reservation_id), json=d)
+                if data.status_code == 200:                
+                    # this isn't an error
+                    return make_response(render_template('error.html', message="Reservation changed!", redirect_url="/"), 200)
 
-                            db.session.add(seat)
+                else:
+                    return make_response(render_template('error.html', message="Reservation NOT changed!", redirect_url="/"), 200)
 
-                            db.session.commit()
 
-                # this isn't an error
-                return make_response(render_template('error.html', message="Guests changed!", redirect_url="/"), 222)
+            else:
+                #invalid form
+                return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id), 400)
 
-        if (len(guests_email_list) >= 1):
-            for idx, guestemail in enumerate(guests_email_list):
-                form[guests_field_list[idx]].data = guestemail
 
-        return render_template('user_reservation_edit.html', form=form)
+        else:
+            # in the GET we fill all the fields with the old values
+            form['places'].data = old_res['places']    
 
+            for idx, seat in enumerate(seat_query):                
+                if idx > 0:
+                    email_form = EmailForm()
+                    form.guest.append_entry(email_form)                
+                form.guest[idx].guest_email.data = seat['guests_email']
+
+            return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
+    
+ 
     else:
-        return make_response(
-            render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+        return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+

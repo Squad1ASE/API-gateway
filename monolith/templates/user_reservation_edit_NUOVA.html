@@ -1,0 +1,196 @@
+<html>
+
+<head>
+<h1>GoOutSafe</h1>
+
+{% if current_user.is_authenticated %}
+  Hi {{ current_user.firstname }}! <a href="/logout">Logout</a>
+
+  <h2>Edit your Reservation</h2>
+
+  <p>Booker email: {{current_user.email}}</p> 
+
+  {# Import JQuery #}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+  <script>
+    // Adjust the indices of subformClass fields when removing items.
+    function adjustIndices(subformClass, removedIndex) {
+      var $forms = $('.' + subformClass);
+
+      $forms.each(function(i) {
+        var $form = $(this);
+        var index = parseInt($form.data('index'));
+        var newIndex = index - 1;
+
+        if (index < removedIndex) {
+          // Skip
+          return true;
+        }
+
+        // Change ID in form itself
+        $form.attr('id', $form.attr('id').replace(index, newIndex));
+        $form.data('index', newIndex);
+
+        // Change IDs in form labels
+        $form.find('label').each(function(j) {
+          var $item = $(this);
+          $item.attr('for', $item.attr('for').replace(index, newIndex));
+        });
+          
+        // Change IDs in form inputs
+        $form.find('input').each(function(j) {
+          var $item = $(this);
+          $item.attr('id', $item.attr('id').replace(index, newIndex));
+          $item.attr('name', $item.attr('name').replace(index, newIndex));
+        });
+      });
+    }
+
+
+    // Remove a form from the subformClass subset
+    function removeForm(event) {
+      var subformClass = event.data.param;
+      var totForms = $('.' + subformClass).length;
+      if (totForms > 0) {
+        var $removedForm = $(this).closest('.' + subformClass);
+        var removedIndex = parseInt($removedForm.data('index'));
+
+        $removedForm.remove();
+
+        // Update indices
+        adjustIndices(subformClass, removedIndex);
+      }
+    }
+
+    //Add a new guest_emailSubform
+    function addEmailSubform() {
+      var $templateForm = $('#email-_-form');
+
+      if (!$templateForm) {
+        console.log('[ERROR] Cannot find template');
+        return;
+      }
+
+      // Get Last index
+      var $lastForm = $('.emailSubform').last();
+
+      var newIndex = 0;
+      if ($lastForm.length > 0) {
+        newIndex = parseInt($lastForm.data('index')) + 1;
+      }
+
+      // Maximum of 100 subforms
+      if (newIndex >= 100) {
+        console.log('[WARNING] Reached maximum number of elements');
+        return;
+      }
+
+      // Add elements
+      var $newForm = $templateForm.clone();
+
+      $newForm.attr('id', $newForm.attr('id').replace('_', newIndex));
+      $newForm.data('index', newIndex);
+
+      $newForm.find('label').each(function(idx) {
+        var $item = $(this);
+        $item.attr('for', $item.attr('for').replace('_', newIndex));
+      });
+
+      $newForm.find('input').each(function(idx) {
+        var $item = $(this);
+
+        $item.attr('id', $item.attr('id').replace('_', newIndex));
+        $item.attr('name', $item.attr('name').replace('_', newIndex));
+      });
+
+      // Append
+      $('#emails-subforms-container').append($newForm);
+      $newForm.addClass('emailSubform');
+      $newForm.removeClass('is-hidden');
+
+      $newForm.find('.removeEmail').click({param: 'emailSubform'}, removeForm);
+    }
+
+
+    $(document).ready(function() {
+      $('#addEmail').click(addEmailSubform);
+      $('.removeEmail').click({param: 'emailSubform'}, removeForm);
+    });
+  </script>
+
+  <style>
+    .is-hidden {
+      display: none;
+    }
+  </style>
+
+</head>    
+
+<body>
+  
+
+
+  <form action="" method="POST">
+    {{ form.hidden_tag() }}
+    <dl>
+      {% for field in form.display %}
+      <dt>{{ form[field].label }}</dt>
+      <dd>{{ form[field]() }}</dd>
+        {% if form[field].errors %}
+          {% for e in form[field].errors %}
+            <p class="help-block">{{ e }}</p>
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    </dl>
+
+
+    {# emails #}
+    <a id="addEmail" href="#">Add more emails</a>
+    <div id="emails-subforms-container">
+      {% for emailSubform in form.guest %}
+        <div id="email-{{ loop.index0 }}-form" class="emailSubform" data-index="{{ loop.index0 }}">
+          {{ emailSubform.guest_email.label }}
+          {{ emailSubform.guest_email }}
+
+          <a class="removeEmail" href="#">Remove</a>
+        </div>
+        
+        {% for field in emailSubform %}
+          {% if field.errors %}
+              {% for e in field.errors %}
+                <p class="help-block">{{ field.label }}: {{ e }}</p>
+              {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endfor %} 
+    </div>
+
+    <p>
+    <input type=submit value="Submit">
+  </form>
+
+  
+  {# EmailForm template #}
+  <div id="email-_-form" class="is-hidden" data-index="_">
+    <label for="emailes-_-email_name">Email</label>
+    <input id="emailes-_-email_name" name="emailes-_-email_name" type="text">
+
+    <a class="removeEmail" href="#">Remove</a>
+  </div>
+
+
+    <br>
+    <a href="/">Back!</a>
+
+  
+
+
+
+</body>
+</html>
+
+{% else %}
+  Hi Anonymous, <a href="/login">Log in</a>
+{% endif %}

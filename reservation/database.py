@@ -16,6 +16,7 @@ db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False,
 def init_db():
     try:
         db.metadata.create_all(bind=engine)
+        '''
         q = db_session.query(Reservation).filter(Reservation.id == 1).first()
         if q is None:
             example = Reservation()
@@ -37,6 +38,7 @@ def init_db():
             r.seats.append(example)
             db_session.add(example)
             db_session.commit()
+        '''
 
     except Exception as e:
         print(e)

@@ -6,13 +6,29 @@ info:
 servers:
 - url: /
 paths:
-  
   /reservations: 
     get:
       tags:
         - All reservations
       summary: Get all the reservations
-      operationId: views.reservation.get_all_reservation
+      operationId: reservation.views.reservation.get_all_reservations
+      parameters:
+        - in: query
+          name: param
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+              restaurant_id:
+                type: integer
+              start_date:
+                type: string
+              end_date:
+                type: string
+            additionalProperties: false
+          style: form
+          explode: true
       responses:
         200:
           description: Return all reservations
@@ -21,10 +37,161 @@ paths:
               schema:
                 type: object
                 properties:
-                  reservation:
+                  reservations:
                     type: array
                     items:
                       $ref: '#/components/schemas/Reservation'
+        #TODO: error with wrong parameters
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        
+    put:
+      tags:
+        - Create reservation
+      summary: Create a reservation
+      operationId: reservation.views.reservation.create_reservation
+      requestBody:
+        description: Reservation to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        200:
+          description: Reservation successfully placed
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Reservation successfully placed
+        403:
+          description: Reservation not placed
+          content: 
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "The restaurant is not available this day at this hour"
+                status: 403
+                title: "Reservation not placed"
+                type: "about:blank"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Delete all reservations for this restaurant
+      summary: Delete all reservations for this restaurant
+      parameters:
+          - in: query
+            name: restaurant_id
+            schema:
+              type: integer
+            required: true
+            description: Numeric ID of the restaurant
+          - in: query
+            name: restaurant_name
+            description: Restaurant name
+            required: true
+            schema:
+              type: string
+            
+      operationId: views.reservation.delete_restaurant_reservations
+      responses:
+        200:
+          description: Restaurant reservations deleted
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      #TODO: differenziare caso ristorante utente
+      tags:
+        - Remove all reservations
+      summary: Delete reservations
+      operationId: reservation.views.reservation.delete_reservations
+      parameters:
+        - in: query
+          name: param
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+              restaurant_id:
+                type: integer
+            minProperties: 1
+            maxProperties: 1
+            additionalProperties: false
+          style: form
+          explode: true
+      responses:
+        200:
+          description: Reservation successfully deleted
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Reservation successfully placed
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          
+
+
 
   /reservations/{reservation_id}:
     get:
@@ -38,7 +205,8 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
-      operationId: views.reservation.get_reservation
+          example: 1
+      operationId: reservation.views.reservation.get_reservation
       responses:
         200:
           description: Return the reservation with this ID
@@ -57,6 +225,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Delete this reservation
@@ -68,7 +253,8 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
-      operationId: views.reservation.delete_reservation
+          example: 1
+      operationId: reservation.views.reservation.delete_reservation
       responses:
         200:
           description: The reservation is deleted
@@ -79,17 +265,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
-    #post:
-    #  tags:
-    #    - Edit this reservation
-    #  summary: Edit this reservation
-
-  /reservations/{reservation_id}/seats:
-    get:
+    post:
       tags:
-        - All seat for this reservation 
-      summary: Get all the seat for this reservation
+        - Edit this reservation
+      summary: Edit the reservation with this ID
       parameters:
         - in: path
           name: reservation_id
@@ -97,44 +294,20 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
-      operationId: views.reservation.get_seats
+          example: 1
+      operationId: reservation.views.reservation.edit_reservation
+      requestBody:
+        description: Reservation to edit
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditReservationRequest'
       responses:
         200:
-          description: Return all seats for this reservation
+          description: Reservation successfully edited
           content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reservation:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Seat'   
-        404:
-          description: There is not a reservation with this ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'     
-
-  /reservations/restaurants/{restaurant_id}:
-    get:
-      tags:
-        - All reservations for this restaurant
-      summary: Get all reservations for this restaurant
-      parameters:
-        - in: path
-          name: restaurant_id
-          schema:
-            type: integer
-          required: true
-          description: Numeric ID of the restaurant
-      operationId: views.reservation.get_restaurant_reservations
-      responses:
-        200:
-          description: Return all reservations for this restaurant
-          content:
-            application/json:
+            text/plain:
               schema:
                 type: object
                 properties:
@@ -142,106 +315,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Reservation'
-    delete:
-      tags:
-        - Delete all reservations for this restaurant
-      summary: Delete all reservations for this restaurant
-      parameters:
-          - in: path
-            name: restaurant_id
-            schema:
-              type: integer
-            required: true
-            description: Numeric ID of the restaurant
-          - in: query
-            name: restaurant_name
-            description: Restaurant name
-            required: true
-            schema:
-              type: string
-      operationId: views.reservation.delete_restaurant_reservations
-      responses:
-        200:
-          description: Restaurant reservations deleted
-          content: {}
-
-    #put:
-    #  tags:
-    #    - Create a reservation for this restaurant
-    #  summary: Create a reservation for this restaurant
-
-
-
-
-  /reservations/users/{user_id}: 
-    get:
-      tags:
-        - All reservations for this user
-      summary: Get all the reservations for this user  
-      parameters:
-        - in: path
-          name: user_id
-          schema:
-            type: integer
-          required: true
-          description: Numeric ID of the user
-      operationId: views.reservation.get_user_reservations
-      responses:
-        200:
-          description: Return all personal reservations of a user
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reservation:
-                    type: array
-                    items:
-                      oneOf:
-                        - $ref: '#/components/schemas/Reservation'
-                        - $ref: '#/components/schemas/Seat'
-                        - $ref: '#/components/schemas/ReservationSeat'
-
-    put:
-      tags:
-        - Create a reservation for this user
-      summary: Create a reservation for this user
-      parameters:
-        - in: path
-          name: user_id
-          schema:
-            type: integer
-          required: true
-          description: Numeric ID of the user
-      operationId: views.reservation.create_reservation
-      responses:
-        200:
-          description: The reservation is created
-          content: {}
-        400:
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    delete:
-      tags:
-        - Delete all the reservations made by the user
-      summary: Delete all the reservations made by this user
-      parameters:
-        - in: path
-          name: user_id
-          schema:
-           type: integer
-          required: true
-          description: Numeric ID of the user
-      operationId: views.reservation.delete_user_reservations
-      responses:
-        200:
-          description: User reservations deleted
-          content: {}
-
- 
+    
 
   /reservations/{reservation_id}/entrances:
     
@@ -256,19 +330,28 @@ paths:
             type: integer
           required: true
           description: Numeric ID of the reservation
-      operationId: views.reservation.confirm_participants
+          example: 1
+      operationId: reservation.views.reservation.confirm_participants
       responses:
         200:
-          description: The entrances id confirmed
-          content: {}
+          description: The entrances are updated
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: The entrances are updated
         400:
           description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'   
-
-
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -296,38 +379,38 @@ components:
           type: integer
           description: Unique identifier
           readOnly: true
-          example: 123
+          example: 1
         booker_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         restaurant_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         seats:
           type: Seat
-          readOnly: false
+          readOnly: true
           $ref: '#/components/schemas/Seat'
         places:
           minimum: 1
           type: integer
-          readOnly: false
-          example: 123
+          readOnly: true
+          example: 2
         table_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         date:
           type: date
           readOnly: true
           example: "12/10/2020 12:00"
         cancelled:
           type: boolean
-          readOnly: false
+          readOnly: true
           example: false
 
     Seat:
@@ -342,70 +425,83 @@ components:
           type: integer
           description: Unique identifier
           readOnly: true
-          example: 123
+          example: 1
         reservation_id:
           minimum: 1
           type: integer
           readOnly: true
-          example: 123
+          example: 1
         guests_email:
           type: string
           readOnly: true
-          example: guest@email.com
+          example: test@test.com
         confirmed:
+          minimum: 1
           type: boolean
           readOnly: false
-          example: false          
+          example: false    
 
-    ReservationSeat:
+    ReservationRequest:
       required:
       - booker_id
+      - booker_email
       - restaurant_id
-      - table_id
+      - places
       - date
-      - cancelled
-      - reservation_id
-      - guests_email
-      - confirmed
+      - time
       type: object
       properties:
-        id:
-          type: integer
-          description: Unique identifier
-          readOnly: true
-          example: 123
         booker_id:
+          minimum: 1
           type: integer
-          readOnly: true
-          example: 123
-        restaurant_id:
-          type: integer
-          readOnly: true
-          example: 123
-        table_id:
-          type: integer
-          readOnly: true
-          example: 123
-        date:
-          type: date
-          readOnly: true
-          example: "12/10/2020 12:00"
-        cancelled:
-          type: boolean
-          readOnly: false
-          example: false
-        reservation_id:
-          type: integer
-          readOnly: true
-          example: 123
-        guests_email:
+          writeOnly: true
+          example: 1
+        booker_email:
+          minimum: 1
           type: string
-          readOnly: true
-          example: guest@email.com
-        confirmed:
-          type: boolean
-          readOnly: false
-          example: false          
+          writeOnly: true
+          example: "test@test.com"
+        restaurant_id:
+          minimum: 1
+          type: integer
+          writeOnly: true
+          example: 1
+        places:
+          minimum: 1
+          type: integer
+          writeOnly: false
+          example: 2
+        date:
+          type: string
+          writeOnly: true
+          example: "21/11/2020"
+        time:
+          type: string
+          writeOnly: true
+          example: "12:00"
+
+    EditReservationRequest:
+      required:
+      - places
+      - seats_email
+      - booker_email
+      type: object
+      properties:
+        places:
+          minimum: 1
+          type: integer
+          writeOnly: true
+          example: 3
+        seats_email:
+          minimum: 1
+          type: array
+          writeOnly: true
+          example: [{'guest_email':'test2@test.com'}, {'guest_email':'test3@test.com'}]
+        booker_email:
+          minimum: 1
+          writeOnly: true
+          example: 'test@test.com'
+           
 
        
   
