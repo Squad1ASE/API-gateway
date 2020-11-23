@@ -1,21 +1,39 @@
 import requests
 from flask import Blueprint, jsonify, Response, request
-from database import db_session, Reservation, Seat
+from reservation.database import db_session, Reservation, Seat
 import datetime
 import json
 import time
 from time import mktime
 from datetime import timedelta
-#from app import delete_reservations_task
 import connexion
 import ast
+from reservation.api_call import get_tables, get_workingdays, get_restaurant
 
-reservation = Blueprint('reservation', __name__)
-
+reservations = Blueprint('reservation', __name__)
 
 # get all the reservation
-def get_all_reservation():
-    reservation_records = db_session.query(Reservation).all()
+def get_all_reservations():
+    reservation_records = []
+    cnt = 0
+    if 'user_id' in request.args:
+        cnt = cnt +1
+        reservation_records = db_session.query(Reservation).filter_by(booker_id=request.args['user_id']).all()
+    if 'restaurant_id' in request.args:
+        cnt = cnt +1
+        reservation_records = db_session.query(Reservation).filter_by(restaurant_id=request.args['restaurant_id']).all()
+    if 'start_date' in request.args:
+        cnt = cnt + 1
+        return
+        #TODO: convert in date and filter the search
+    if 'end_date' in request.args:
+        cnt = cnt +1
+        return
+        #TODO: convert in date and filter the search
+    if cnt == 0:
+        reservation_records = db_session.query(Reservation).all()
+    elif cnt > 1:
+        return connexion.problem(400, 'Bad Request', 'Too much arguments in the query')
     return [reservation.serialize() for reservation in reservation_records]
 
 
@@ -35,34 +53,43 @@ def get_seats(reservation_id):
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     return [seat.serialize() for seat in seats]
 
-
-# get all the reservations for a restaurant
-def get_restaurant_reservations(restaurant_id):
-    # get the future reservation
-    reservation_records = db_session.query(Reservation).filter(Reservation.restaurant_id == restaurant_id, Reservation.cancelled == False, Reservation.date >= datetime.datetime.now() - timedelta(hours=3)).all()
-    return [reservation.serialize() for reservation in reservation_records]
-
+# utility to convert days in number
+def convert_weekday(day):
+    if day == 'monday':
+        return 1
+    elif day == 'tuesday':
+        return 2
+    elif day == 'wednesday':
+        return 3
+    elif day == 'thursday':
+        return 4
+    elif day == 'friday':
+        return 5
+    elif day == 'saturday':
+        return 6
+    elif day == 'sunday':
+        return 7
 
 # create a reservation
-def create_reservation(user_id):
+def create_reservation():
 
     r = request.json
+    print(r)
 
     date_str = r['date'] + ' ' + r['time']
     date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
     restaurant_id = r['restaurant_id']
     
-    #restaurant = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id))
+    restaurant = get_restaurant().json()
     # check if the day is open this day
     weekday = date.weekday() + 1
-    workingdays = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/workingdays').json()
-    #print(workingdays)
+    workingdays = restaurant['working_days']#get_workingdays(restaurant_id).json()
     workingday = None
     for w in workingdays:
-        wd = ast.literal_eval(w)
-        print(wd)
-        if wd['day'] == weekday:
-            workingday = wd
+        #TODO: this line if the day is in string format
+        if convert_weekday(w['day']) == weekday:
+        #if w['day'] == weekday:
+            workingday = w
     if workingday is None:
         return connexion.problem(400, 'Error', 'Restaurant is not open this day!')
     
@@ -83,20 +110,17 @@ def create_reservation(user_id):
         return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
 
     # check if there is any table with this capacity
-    all_tables = requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/tables').json()
+    all_tables = restaurant['tables']
     tables = []
     for table in all_tables:
-        t = ast.literal_eval(table)
-        print(t)
-        if t['capacity'] >= r['places']:
-            tables.append(t)
+        if table['capacity'] >= r['places']:
+            tables.append(table)
     if len(tables) == 0:
         return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
     
     # check if there is a table for this amount of time
-    #TODO: make it with the right amount of time
-    start_reservation = date - timedelta(minutes=15)#restaurant.avg_time_of_stay)
-    end_reservation = date + timedelta(minutes=15)#restaurant.avg_time_of_stay)
+    start_reservation = date - timedelta(minutes=restaurant['avg_time_of_stay'])
+    end_reservation = date + timedelta(minutes=restaurant['avg_time_of_stay'])
     reserved_table_records = db_session.query(Reservation).filter(
             Reservation.date >= start_reservation,
             Reservation.date <= end_reservation,
@@ -272,109 +296,6 @@ def edit_reservation(reservation_id):
 
 
 
-
-
-
-# get all the reservation in which user is interested
-def get_user_reservations(user_id):
-    reservation_records = db_session.query(Reservation).filter_by(booker_id=user_id,cancelled=False).all()
-    return [reservation.serialize() for reservation in reservation_records]
-    '''
-    user = requests.get('http://127.0.0.1:5000/users/'+str(user_id)) #ASK USERS 
-    #print(user.status_code)
-
-    data_dict = []
-    if user.status_code == 200 :
-        user_content = user.json()
-        #print(user_content['phone'])
-        print(user_content['role'])
-
-        if user_content['role'] == 'customer':  #TODO complete first post reservation in our db
-            reservation_records = db_session.query(Reservation).filter(
-                Reservation.booker_id == user_content['id'],
-                Reservation.cancelled == False,
-                #Reservation.date >= datetime.datetime.now()
-            ).all()
-            #print(len(reservation_records))
-
-            for reservation in reservation_records:
-
-                restaurant = requests.get("http://127.0.0.1:5000/restaurants/reservation/"+str(reservation.restaurant_id)) #ASK RESTAURANTS                       
-                if restaurant.status_code == 200:
-                    restaurant_content = restaurant.json()
-
-                    temp_dict = dict(
-                        restaurant_name=restaurant_content['name'],
-                        date=reservation.date,
-                        reservation_id=reservation.id
-                    )
-                    data_dict.append(temp_dict)
-            return data_dict
-
-        elif user_content['role'] == 'owner':
-            restaurants_records = requests.get("http://127.0.0.1:5000/restaurants/users/"+str(user_content['id']))    #ASK RESTAURANTS    
-            if restaurant_records.status_code == 200:
-                restaurant_records_content = restaurant_records.json()
-
-                for restaurant in restaurants_records_content:
-                    reservation_records = db.session.query(Reservation).filter(
-                        Reservation.restaurant_id == restaurant['id'],
-                        Reservation.cancelled == False,
-                        Reservation.date >= datetime.datetime.now() - timedelta(hours=3)
-                    ).all()
-
-                    for reservation in reservation_records:
-                        seat = db_session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
-                        booker = requests.get("http://127.0.0.1:5000/users/"+str(reservation.booker_id)) 
-                        table = requests.get('http://127.0.0.1:5000/restaurants/tables'+str(reservation.table_id)) #ASK RESTAURANTS
-
-                        if booker.status_code == 200 and table.status_code == 200:
-                            booker_content = booker.json()
-                            table_content = table.json()
-
-                            temp_dict = dict(
-                                restaurant_name=restaurant['name'],
-                                restaurant_id=restaurant['id'],
-                                date=reservation.date,
-                                table_name=table_content['table_name'],
-                                booker_fn=booker_content['firstname'],
-                                booker_ln=booker_content['lastname'],
-                                booker_phone=booker_content['phone'],
-                                reservation_id=reservation.id
-                            )
-                            data_dict.append(temp_dict)
-                data_dict = sorted(data_dict, key=lambda i: (i['restaurant_name'], i['date']))
-            return data_dict
-
-        elif user_content['role'] == 'ha': 
-            return  Response('It is not allowed', status=403)
-
-        else: 
-            reservation_records = db_session.query(Reservation).filter(
-                Reservation.booker_id == user_content['id']
-            ).all()
-
-            for reservation in reservation_records:
-                temp_dict = dict(
-                    reservation_id=reservation.id,
-                    booker_id=reservation.booker_id,
-                    restaurant_id=reservation.restaurant_id,
-                    table_id=reservation.table_id,                    
-                    date=reservation.date,
-                    cancelled=reservation.cancelled
-                )
-                data_dict.append(temp_dict)
-
-                seat_records = db_session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
-                for seat in seat_records:
-                    temp_dict = dict(
-                        seat_id=seat.id,
-                        reservation_id=seat.reservation_id,
-                        guests_email=seat.guests_email,
-                        confirmed=seat.confirmed                        
-                    )
-                data_dict.append(temp_dict)
-            return data_dict
-    else:
-        return Response('It is not a user', status=403)
-    '''
+def delete_reservations():
+    return 200
+    
