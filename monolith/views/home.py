@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect
-from monolith.database import db, Restaurant, Like, Notification, User
-from monolith.auth import current_user
+from database import db, Restaurant, Like, Notification, User
+from auth import current_user
 import datetime
 from datetime import timedelta
 

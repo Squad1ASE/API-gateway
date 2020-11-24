@@ -6,6 +6,7 @@ redis
 flask-wtf
 flask-sqlalchemy
 pip-tools
+python-dateutil
 email_validator
 pytest
 pytest-cov

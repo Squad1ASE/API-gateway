@@ -510,11 +510,11 @@ components:
           example: 'test@test.com'
         date:
           minimum: 1
-          type: string #date?
+          type: string
           writeOnly: true
-          example: "12/10/2020"
+          example: "22/11/2020"
         time:
           minimum: 1
           type: string
           writeOnly: true
-          example: "12:00"
+          example: "13:00"

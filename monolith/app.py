@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from monolith.database import ( db, User, Restaurant, Table, WorkingDay,
+from database import ( db, User, Restaurant, Table, WorkingDay,
                                 Reservation, Like, Seat, Review, 
                                 Dish, Quarantine, Notification )
 from monolith.views import blueprints
@@ -22,8 +22,8 @@ def create_app():
     app = Flask(__name__)
     app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
     app.config['SECRET_KEY'] = 'ANOTHER ONE'
-    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gooutsafe.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gooutsafe.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     

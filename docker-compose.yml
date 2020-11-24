@@ -29,13 +29,14 @@ services:
       - FLASK_RUN_HOST=0.0.0.0
       - FLASK_APP=app.py
       - PYTHONPATH=./
+      - API_GATEWAY_SERVICE=http://nginx-monolith:80/
     ports:
-      - "6000-6010:6000"
+      - "5100-5110:5100"
     links:
       - postgres-reservation
     networks:
-      - monolith
-    command: flask run
+      - reservation
+    command: flask run -p 5100
     depends_on:
       - postgres-reservation
 
@@ -46,6 +47,7 @@ services:
       - FLASK_RUN_HOST=0.0.0.0
       - FLASK_APP=app.py
       - PYTHONPATH=./
+      - RESERVATION_SERVICE=http://nginx-reservation:8080/
     ports:
       - "5000-5010:5000"
     links:

@@ -6,6 +6,7 @@ from reservation import database
 import requests
 from celery import Celery
 from flask import jsonify
+from api_call import put_notification
 
 from reservation.database import db_session, Reservation, Seat
 
@@ -76,7 +77,6 @@ def delete_reservations_task():
             table_name=""
             for item in tipo[2:]:
                 table_name=table_name+' '+item
-
             notification = {
                 "type":'reservation_canceled',
                 "message":'The reservation of the ' + table_name + ' table for the date ' + str(
@@ -89,21 +89,18 @@ def delete_reservations_task():
             table_name = ""
             for item in tipo[2:]:
                 table_name = table_name + ' ' + item
-
             notification = {
                 "type": 'reservation_canceled',
                 "message": 'The reservation of the ' + table_name + ' table for the date ' + str(
                     reservation.date) + ' has been canceled',
                 "user_id": restaurant_owner_id
             }
-            print('deleted reservation, motivation: '+tipo[0])
 
 
         elif tipo[0] == 'restaurant_deleted':
             restaurant_name = ""
             for item in tipo[1:]:
                 restaurant_name=restaurant_name+' '+item
-            print(restaurant_name+'----------------------')
             timestamp = reservation.date
             booker_id = reservation.booker_id
 
@@ -114,7 +111,7 @@ def delete_reservations_task():
                 "user_id": int(booker_id)
             }
         notifications.append(notification)
-        res = requests.put('http://127.0.0.1:5000/users/notification', json=json.dumps(notification))
+        res = put_notification(notification)
         # se fallisce verrà ripescata da celery al prossimo giro
         if res.status_code == 200:
             print('deleted reservation, motivation: ' + tipo[0])

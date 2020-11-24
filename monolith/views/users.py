@@ -12,6 +12,7 @@ from flask_login import (current_user, login_user, logout_user,
 import datetime
 from monolith.views.restaurants import restaurant_delete
 import requests
+import os
 
 import time
 from datetime import date
@@ -20,6 +21,10 @@ from datetime import timedelta
 
 
 users = Blueprint('users', __name__)
+
+RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+#RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
+RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
 
 
 @users.route('/users')
@@ -141,7 +146,7 @@ def reservation_list():
         return make_response(
             render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
             403)
-    response = requests.get('http://localhost:5100/reservations?user_id=' + str(current_user.id))
+    response = requests.get(RESERVATION_SERVICE+'reservations?user_id=' + str(current_user.id))
     if response.status_code != 200:
         if response.status_code == 500:
             return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
@@ -171,26 +176,72 @@ def deletereservation(reservation_id):
             render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
             403)
 
-    resp = requests.delete('http://localhost:5100/reservations/' + str(reservation_id))
+    resp = requests.delete(RESERVATION_SERVICE+'reservations/' + str(reservation_id))
 
     if resp.status_code == 200:
         return reservation_list()
+    elif resp.status_code == 404:
+        return make_response(
+            render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
     elif resp.status_code == 403:
         return make_response(render_template('error.html', message="You can't delete a past reservation!",
                                              redirect_url="/users/reservation_list"), 403)
+    elif resp.status_code == 500:
+        return make_response(
+            render_template('error.html', message="Try again later", redirect_url="/users/reservation_list"), 500)
     else:
         return make_response(
-            render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+            render_template('error.html', message="Error", redirect_url="/users/reservation_list"), 500)
+
+@users.route('/users/editreservation/<reservation_id>', methods=['POST'])
+def editreservation_post(reservation_id):
+    if (current_user.role == 'ha' or current_user.role == 'owner'):
+        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+    form = EditReservationForm()
+    if form.validate_on_submit():
+        if len(form.data['guest']) + 1 > form.data['places']:
+            return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='Too much guests!'), 400)
+
+        time_now = datetime.datetime.now().strftime('%H:%M')
+        if form.data['date'] < datetime.date.today() or (form.data['date']==datetime.date.today() and str(request.form['time'])<=time_now ):
+            return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='You cannot edit a past reservertion'), 400)
+
+        d = dict(
+            places=form.data['places'],
+            seats_email=form.data['guest'],
+            booker_email = current_user.email,
+            date = str(request.form['date']),
+            time = str(request.form['time'])
+        )
 
 
-@users.route('/users/editreservation/<reservation_id>', methods=['GET','POST'])
+        data = requests.post(RESERVATION_SERVICE+'reservations/'+str(reservation_id), json=d)
+        if data.status_code == 200:                
+            # this isn't an error
+            return make_response(render_template('error.html', message="Reservation changed!", redirect_url="/"), 200)
+
+        else:
+            if data.status_code == 404:
+                return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+            elif data.status_code == 500:
+                return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
+            elif data.status_code == 400:
+                return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/users/reservation_list"), 400)
+            else:
+                return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list'), 500)
+
+    else:
+        #invalid form
+        return make_response(render_template('user_reservation_edit_NUOVA.html', form=form), 400)
+
+@users.route('/users/editreservation/<reservation_id>', methods=['GET'])
 @login_required
 def editreservation(reservation_id):
 
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
-    response = requests.get('http://localhost:5100/reservations/'+str(reservation_id))
+    response = requests.get(RESERVATION_SERVICE+'reservations/'+str(reservation_id))
     if response.status_code != 200:
         if response.status_code == 404:
             return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
@@ -201,72 +252,30 @@ def editreservation(reservation_id):
     else: 
         old_res = response.json()
 
-
-
-
         seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 
         for seat in seat_query:
             if seat['guests_email'] == current_user.email:
                 seat_query.remove(seat)                 
 
-
         form = EditReservationForm()
-        if request.method == 'POST':
-            if form.validate_on_submit():
-                if len(form.data['guest']) + 1 > form.data['places']:
-                    return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='Too much guests!'), 400)
+        
+        # in the GET we fill all the fields with the old values
+        form['places'].data = old_res['places']
 
-                time_now = datetime.datetime.now().strftime('%H:%M')
-                if form.data['date'] < datetime.date.today() or (form.data['date']==datetime.date.today() and str(request.form['time'])<=time_now ):
-                    return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='You cannot edit a past reservertion'), 400)
-                
-                d = dict(
-                    places=form.data['places'],
-                    seats_email=form.data['guest'],
-                    booker_email = current_user.email,
-                    date = str(request.form['date']),
-                    time = str(request.form['time'])
-                )
+        dt_str = old_res['date']
+        dt= datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+        print(dt.date(), dt.time())
+        form['date'].data = dt.date()
+        form['time'].data = dt.time()
+        if len(seat_query) > 0:
+            for idx, seat in enumerate(seat_query):    
+                email_form = EmailForm()
+                form.guest.append_entry(email_form)       
+                form.guest[idx].guest_email.data = seat['guests_email']
 
+        return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
 
-                data = requests.post('http://localhost:5100/reservations/'+str(reservation_id), json=d)
-                if data.status_code == 200:                
-                    # this isn't an error
-                    return make_response(render_template('error.html', message="Reservation changed!", redirect_url="/"), 200)
-
-                else:
-                    if response.status_code == 404:
-                        return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
-                    elif response.status_code == 500:
-                        return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
-                    elif response.status_code == 400:
-                        return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/users/reservation_list"), 400)
-                    else:
-                        return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list'), 500)
-
-
-            else:
-                #invalid form
-                return make_response(render_template('user_reservation_edit_NUOVA.html', form=form), 400)
-
-
-        else:
-            # in the GET we fill all the fields with the old values
-            form['places'].data = old_res['places']
-
-            dt_str = old_res['date']
-            dt= datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-            print(dt.date(), dt.time())
-            form['date'].data = dt.date()
-            form['time'].data = dt.time()
-            if len(seat_query) > 0:
-                for idx, seat in enumerate(seat_query):    
-                    email_form = EmailForm()
-                    form.guest.append_entry(email_form)       
-                    form.guest[idx].guest_email.data = seat['guests_email']
-
-            return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
     
  
 
