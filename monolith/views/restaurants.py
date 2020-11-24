@@ -146,6 +146,8 @@ def create_reservation(restaurant_id):
         return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
     if form.validate_on_submit():
 
+        #TODO: controllo su data nel passato
+
         #weekday = form.date.data.weekday() + 1
         reservation_time = time.strptime(request.form['time'], '%H:%M')
         reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])

@@ -6,6 +6,7 @@ from sqlalchemy import exc
 from unittest import mock
 from unittest.mock import patch
 import datetime
+from datetime import timedelta
 
 from reservation.views.reservation import (get_restaurant, get_restaurant_name, create_reservation, edit_reservation,
                                             confirm_participants, delete_reservation, delete_reservations, put_notification)
@@ -24,7 +25,9 @@ from reservation.utilities import (edit_reservation_EP, restaurant_example, conf
                                         delete_USER_reservations_example, edit_ERROR1_reservation_future_example,
                                         contact_tracing_EP, contact_tracing_example, restaurant_closed_h24_example, 
                                         reservation_example_closed_restaurant, edit_ERROR4_reservation_closed_restaurant_example,
-                                        delete_ERROR_reservations_example, delete_RESTAURANT_reservations_example)
+                                        delete_ERROR_reservations_example, delete_RESTAURANT_reservations_example, restaurant_7days_example,
+                                        edit_ERROR5_reservation_closed_restaurant_example, edit_reservation_future_table_example, 
+                                        edit_reservation_future_table_error_example, contact_tracing_nodate_example, contact_tracing_nomail_example)
 
 
 # command : pytest tests -s --cov=reservation --cov-report term-missing
@@ -310,6 +313,9 @@ def test_component_reservations(mock1, test_app):
     res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
 
     # edit reservation in the future
+
+    assert edit_reservation_EP(test_client, res.id, edit_reservation_future_table_error_example).status_code == 400 
+    assert edit_reservation_EP(test_client, res.id, edit_reservation_future_table_example).status_code == 200 
     assert edit_reservation_EP(test_client, res.id, edit_reservation_future_example).status_code == 200 
 
     # error in editing a reservation with a number of places <1
@@ -323,6 +329,56 @@ def test_component_reservations(mock1, test_app):
 
     db_session.delete(res)
     db_session.commit()
+    
+
+    reservation = Reservation()
+    reservation.booker_id = 3
+    reservation.restaurant_id = 3
+    reservation.date = datetime.datetime.now()+timedelta(hours=1)#.strptime('%d/%m/%Y %H:%M')
+    reservation.places = 2
+    reservation.table_id = 1
+    db_session.add(reservation)
+    db_session.commit()
+
+
+    err_mock = mock.MagicMock()
+    type(err_mock).status_code = mock.PropertyMock(return_value=500)
+    err_mock.json.return_value = restaurant_closed_h24_example
+    mock1.return_value = err_mock
+    # error in editing a reservation with a number of emails > places
+    assert edit_reservation_EP(test_client, reservation.id, edit_ERROR4_reservation_closed_restaurant_example).status_code == 500 
+
+    wrong_mock = mock.MagicMock()
+    type(wrong_mock).status_code = mock.PropertyMock(return_value=200)
+    wrong_mock.json.return_value = restaurant_closed_h24_example
+    mock1.return_value = wrong_mock
+    # error in editing a reservation with a number of emails > places
+    assert edit_reservation_EP(test_client, reservation.id, edit_ERROR4_reservation_closed_restaurant_example).status_code == 400 
+
+    db_session.delete(reservation)
+    db_session.commit()
+
+    days7_mock = mock.MagicMock()
+    type(days7_mock).status_code = mock.PropertyMock(return_value=200)
+    days7_mock.json.return_value = restaurant_7days_example
+    mock1.return_value = days7_mock
+
+    reservation = Reservation()
+    reservation.booker_id = 3
+    reservation.restaurant_id = 4
+    reservation.date = datetime.datetime.today() + timedelta(days=1)
+    reservation.places = 2
+    reservation.table_id = 1
+
+    db_session.add(reservation)
+    db_session.commit()
+
+    reservation = db_session.query(Reservation).filter_by(restaurant_id=4).first()
+    assert edit_reservation_EP(test_client, reservation.id, edit_ERROR5_reservation_closed_restaurant_example).status_code == 400 
+
+    db_session.delete(reservation)
+    db_session.commit()
+
     
 
 @patch('reservation.views.reservation.get_restaurant')
@@ -358,6 +414,8 @@ def test_component_delete(mock1, mock2, test_app):
     res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
     # delete the reservations of the restaurant
     assert delete_all_reservations_EP(test_client, delete_restaurant_reservations_example).status_code == 200
+    assert delete_all_reservations_EP(test_client, {}).status_code == 400
+
 
 @patch('reservation.views.reservation.get_restaurant')
 @patch('reservation.views.reservation.put_notification')
@@ -382,6 +440,8 @@ def test_contact_tracing(mock1, mock2, test_app):
     res.seats.append(seat)
     db_session.commit()
     assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 200
+    assert contact_tracing_EP(test_client, contact_tracing_nomail_example).status_code == 400
+    assert contact_tracing_EP(test_client, contact_tracing_nodate_example).status_code == 400
 
 @patch('reservation.app.put_notification')
 def test_task_celery(mock1, test_app):

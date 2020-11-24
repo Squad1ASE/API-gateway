@@ -131,6 +131,9 @@ paths:
                 restaurant_id:
                   type: integer
                   example: 1
+                restaurant_name:
+                  type: string
+                  example: 'name'
       responses:
         200:
           description: Restaurant reservations deleted

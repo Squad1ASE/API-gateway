@@ -234,22 +234,21 @@ def delete_reservations():
             db_session.commit()
         return "User reservations deleted"
     elif 'restaurant_id' in body:
-        restaurant_id = body['restaurant_id']
-        #print('delete reservations for restaurant', restaurant_id)
-        response = get_restaurant_name(restaurant_id)
-        if response.status_code != 200:
-            return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
-        restaurant_name = response.json()
+        if 'restaurant_name' not in body:
+            return connexion.problem('400', 'Error', 'Restaurant name required')
+        else:
+            restaurant_id = body['restaurant_id']
+            restaurant_name = body['restaurant_name']
 
-        reservations = db_session.query(Reservation).filter(
-            Reservation.restaurant_id == int(restaurant_id),
-        ).all()
+            reservations = db_session.query(Reservation).filter(
+                Reservation.restaurant_id == int(restaurant_id),
+            ).all()
 
-        for reservation in reservations:
-            reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
-            db_session.commit()
+            for reservation in reservations:
+                reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
+                db_session.commit()
 
-        return "Restaurant reservations deleted"
+            return "Restaurant reservations deleted"
     else:
         return connexion.problem('400', 'Error', 'You must specify an ID')
 
@@ -267,13 +266,12 @@ def edit_reservation(reservation_id):
         
 
     r = request.json # save all new seats data and places if changed
-    #print(r)
 
     if len(r['seats_email']) + 1 > r['places']:
         return connexion.problem(400, 'Error', 'You cannot have more emails than people!')
 
-    if r['places'] <= 0:
-        return connexion.problem(400, 'Error', 'You cannot book for less people than your self!')
+    #if r['places'] <= 0:
+    #    return connexion.problem(400, 'Error', 'You cannot book for less people than your self!')
 
 
     date_str = r['date'] + ' ' + r['time']
@@ -282,15 +280,13 @@ def edit_reservation(reservation_id):
     if date < datetime.datetime.now():
         return connexion.problem(400, 'Error', "You can't edit a past reservation")
 
-
-    # change table_id and date only if places and date changed  
+    # change table_id and date only if places and date changed 
     if date != old_res.date or r['places'] != old_res.places:
 
         response = get_restaurant(old_res.restaurant_id)
         if (response.status_code != 200):
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
         restaurant = response.json()
-
         if date != old_res.date:
             # check if the day is open this day
             weekday = date.weekday() + 1
@@ -314,10 +310,8 @@ def edit_reservation(reservation_id):
                         break
                 except Exception as e:
                     print(e)
-
             if time_span is False:
                 return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
-            
             
             old_res.date = date  
             db_session.commit()
@@ -357,7 +351,6 @@ def edit_reservation(reservation_id):
                         table_id_reservation = table['id']
                         break
                 if table_id_reservation is None:
-                    #print(table_id_reservation)
                     return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
 
                 else:
@@ -400,10 +393,10 @@ def do_contact_tracing():
     body = request.json
 
     #print(body)
-    if 'email' not in body:
-        return connexion.problem('400', 'Error', 'You must specify an email')
-    if 'start_date' not in body:
-        return connexion.problem('400', 'Error', 'You must specify a date')
+    #if 'email' not in body:
+    #    return connexion.problem('403', 'Error', 'You must specify an email')
+    #if 'start_date' not in body:
+    #    return connexion.problem('403', 'Error', 'You must specify a date')
 
     positive_email=body['email']
     start_date=datetime.datetime.strptime(body['start_date'], '%Y-%m-%d')
