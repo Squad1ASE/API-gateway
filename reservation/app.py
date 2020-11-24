@@ -65,7 +65,7 @@ def hello():
 
 @celery.task()
 def delete_reservations_task():
-
+    notifications=[]
     reservations=db_session.query(Reservation).filter(Reservation.cancelled != None).all()
     for reservation in reservations:
         notification = {}
@@ -78,17 +78,26 @@ def delete_reservations_task():
                 table_name=table_name+' '+item
 
             notification = {
-                "type":2,
+                "type":'reservation_canceled',
                 "message":'The reservation of the ' + table_name + ' table for the date ' + str(
                     reservation.date) + ' has been canceled',
                 "user_id":restaurant_owner_id
             }
 
         elif tipo[0] == 'user_deleted':
-            db_session.delete(reservation)
-            db_session.commit()
+            restaurant_owner_id = tipo[1]
+            table_name = ""
+            for item in tipo[2:]:
+                table_name = table_name + ' ' + item
+
+            notification = {
+                "type": 'reservation_canceled',
+                "message": 'The reservation of the ' + table_name + ' table for the date ' + str(
+                    reservation.date) + ' has been canceled',
+                "user_id": restaurant_owner_id
+            }
             print('deleted reservation, motivation: '+tipo[0])
-            continue
+
 
         elif tipo[0] == 'restaurant_deleted':
             restaurant_name = ""
@@ -99,12 +108,12 @@ def delete_reservations_task():
             booker_id = reservation.booker_id
 
             notification = {
-                "type": 2,
+                "type": 'reservation_canceled',
                 "message": 'Your reservation of ' + str(
                     timestamp) + ' at restaurant ' + restaurant_name + ' has been canceled due to the restaurant closing',
                 "user_id": int(booker_id)
             }
-
+        notifications.append(notification)
         res = requests.put('http://127.0.0.1:5000/users/notification', json=json.dumps(notification))
         # se fallisce verrà ripescata da celery al prossimo giro
         if res.status_code == 200:

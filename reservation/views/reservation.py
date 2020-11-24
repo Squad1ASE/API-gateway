@@ -12,6 +12,7 @@ import reservation.app
 #from app.application import delete_restaurant_reservations_task
 from reservation.api_call import get_restaurant
 import dateutil.parser
+from sqlalchemy import or_, and_
 
 reservations = Blueprint('reservation', __name__)
 
@@ -192,20 +193,21 @@ def delete_reservation(reservation_id):
         for t in tables:
             if t['id'] == reservation.table_id:
                 table_name = t['name']
+                break
         #res = requests.get('http://127.0.0.1:5000/restaurants/'+str(reservation.table_id)+'/table_name')
         #table_name = (res.json())['table_name']
 
         restaurant_owner_id = restaurant['owner_id']
         
         
-        reservation.cancelled = 'reservation_deleted'#+' '+str(restaurant_owner_id)+' '+str(table_name)
+        reservation.cancelled = 'reservation_deleted'+' '+str(restaurant_owner_id)+' '+str(table_name)
         db_session.commit()
 
         return "The reservation is deleted"
     return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
 
 def delete_reservations():
-    if 'restaurant_id' in request.args and 'user_id' in request.args:
+    if 'restaurant_id' in request.args and 'user_id' in request.args:   #todo prenderli dal request body
         return connexion.problem('400', 'Error', 'Too much query arguments')
     elif 'user_id' in request.args:
         user_id = request.args.get('user_id')
@@ -214,7 +216,16 @@ def delete_reservations():
         ).all()
 
         for reservation in reservations:
-            reservation.cancelled = 'user_deleted'
+            restaurant = get_restaurant(reservation.restaurant_id).json()
+
+            tables = restaurant['tables']
+            table_name = None
+            for t in tables:
+                if t['id'] == reservation.table_id:
+                    table_name = t['name']
+                    break
+            restaurant_owner_id = restaurant['owner_id']
+            reservation.cancelled = 'user_deleted' +' '+str(restaurant_owner_id)+' '+str(table_name)
             db_session.commit()
         return "User reservations deleted"
     elif 'restaurant_id' in request.arg:
@@ -323,3 +334,113 @@ def edit_reservation(reservation_id):
             db_session.commit()
 
     return 'Reservation is edited successfully'
+
+def do_contact_tracing():  #todo manca da inviare notifiche per reservation future(da start_date a 14 gg) agli owner_id
+
+    body = request.json
+    if 'email' not in body:
+        return connexion.problem('400', 'Error', 'You must specify an email')
+    if 'start_date' not in body:
+        return connexion.problem('400', 'Error', 'You must specify a date')
+
+    positive_email=body['email']
+    start_date=datetime.datetime.strptime(body['start_date'], '%m/%d/%y')
+
+    # first retrieve the reservations of the last 14 days in which the positive was present
+    pre_date = start_date - timedelta(days=14)
+    positive_reservations = db_session.query(Seat)\
+        .join(Reservation, Reservation.id == Seat.reservation_id)\
+        .filter(
+            Seat.guests_email != None
+        )\
+        .filter(
+            Seat.guests_email == positive_email,
+            Seat.confirmed == True,
+            Reservation.cancelled == None,
+            Reservation.date <= start_date,
+            Reservation.date >= pre_date
+        ).with_entities(
+            Reservation.date,
+            Reservation.restaurant_id
+        ).distinct()
+
+
+    user_reservations=[]
+    for date,restaurant_id in positive_reservations:
+        response = get_restaurant(restaurant_id)
+        if response.status_code != 200:
+            return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
+        restaurant= response.json
+        info=dict(date=date,restaurant_id=restaurant_id,avg_time_of_stay=restaurant['avg_time_of_stay'],owner_id=restaurant['owner_id'],restaurant_name=restaurant['name'])
+        user_reservations.append(info)
+
+
+
+    # For each reservation where the positive was present,
+    # retrieve all the people in the restaurant who have been in
+    # contact with the positive for at least 15 minutes
+    notifications = []
+    for ur in user_reservations:
+
+        timestamp = ur['date'].strftime("%d/%m/%Y, %H:%M")
+        notification = {
+            "type": 'reservation_with_positive',
+            "message": 'On ' + timestamp + ' there was a positive in your restaurant "'+ur['restaurant_name']+'"!',
+            "user_id": ur['owner_id']
+        }
+        notifications.append(notification)
+        '''
+        //.............(date)..............................................................
+                        20:00    20:15                         20:25    20:40
+        //________________|--------|*****************************|--------|________________
+                                   |                             |  
+                                   |------------span-------------|                            
+                                   |                             |
+        //                 start_contagion_time         end_contagion_time
+
+
+        // or start at    |______________________________________|         
+
+        // or end at               |______________________________________|
+        '''
+
+        start_contagion_time = ur['date'] + timedelta(minutes=15)
+        span = ur['avg_time_of_stay'] - 15
+        end_contagion_time = ur['date'] + timedelta(minutes=span)
+
+        users_to_be_notified = db_session.query(Seat)\
+            .join(Reservation, Reservation.id == Seat.reservation_id)\
+            .filter(
+                Seat.guests_email != None,
+                Seat.confirmed == True,
+                Reservation.cancelled == None,
+                Reservation.restaurant_id == ur['restaurant_id']
+            )\
+            .filter(
+                or_(
+                    and_(Reservation.date >= ur['date'], Reservation.date <= end_contagion_time),
+                    and_(Reservation.date + timedelta(minutes=ur['avg_time_of_stay']) >= start_contagion_time, Reservation.date + timedelta(minutes=ur['avg_time_of_stay']) <= ur['date'] + timedelta(minutes=ur['avg_time_of_stay']))
+                )
+            )\
+            .with_entities(
+                Reservation.date,
+                Seat.guests_email,
+            )\
+            .distinct()
+
+        for date,email in users_to_be_notified:
+            #customers_to_be_notified.add(u)
+            if email != positive_email:
+                timestamp = date.strftime("%d/%m/%Y, %H:%M")
+                notification = {
+                    "type": 'contact_with_positive',
+                    "message": 'On ' + timestamp + ' you have been in contact with a positive. Get into quarantine!',
+                    "email": email
+                }
+                notifications.append(notification)
+
+
+
+
+
+

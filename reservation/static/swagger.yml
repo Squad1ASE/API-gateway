@@ -106,7 +106,7 @@ paths:
         - Delete all reservations for this restaurant
       summary: Delete all reservations for this restaurant
       parameters:
-          - in: query
+          - in: query   #todo change
             name: param
             required: true
             schema:
@@ -308,6 +308,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /contact_tracing:
+    put:
+      tags:
+        - contactTracing
+      summary: Do contact tracing
+      operationId: reservation.views.reservation.do_contact_tracing
+      requestBody:
+        description: Marked as positive email and date
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - start_date
+                - email
+              properties:
+                start_date:
+                  type: string
+                  example: "11/12/2020"
+                  description: date of positivity
+                  pattern: '^\d{2}/\d{2}/\d{4}$'
+                email:
+                  type: string
+                  example: "user@example.com"
+
+      responses:
+        200:
+          description: Contact tracing completed correctly
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Contact tracing completed correctly
 
 components:
   schemas:
@@ -458,6 +491,3 @@ components:
           writeOnly: true
           example: 'test@test.com'
            
-
-       
-  
