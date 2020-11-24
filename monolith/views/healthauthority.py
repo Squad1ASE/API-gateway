@@ -11,56 +11,83 @@ import requests
 
 healthauthority = Blueprint('healthauthority', __name__)
 
+USER_SERVICE = 'http://127.0.0.1:5060/'
+REQUEST_TIMEOUT_SECONDS = 1
 
-@healthauthority.route('/patient', methods=['GET','POST'])
+@healthauthority.route('/patient', methods=['GET'])
 @login_required
-def get_patient_informations():
+def get_patient_informations_GET():
     if(current_user.role != "ha"):
         return make_response(render_template('error.html', message="Access denied!", redirect_url="/"), 403)
 
     form = GetPatientInformationsForm()
 
-    if request.method == 'POST':
+    if 'go_back_button' in request.form and request.form['go_back_button'] == 'go_back':
+        return redirect('/patient')
 
-        if form.validate_on_submit():
+    if 'email' in request.args:
+        html = 'patient_informations.html'
+        if request.args.get("state") == "patient already under observation":
+            html = 'patient_informations_nomarkbutton.html'
+                
+        return render_template(html, email=request.args.get("email"),
+            firstname=request.args.get("firstname"),
+            lastname=request.args.get("lastname"),
+            dateofbirth=request.args.get("dateofbirth"),
+            state=request.args.get("state"),
+            startdate=request.args.get("startdate"),
+            enddate=request.args.get("enddate")
+        )
 
-            reply = requests.get('http://127.0.0.1:5060/users?email='+form.data['email'])
+    return render_template('generic_template.html', form=form)
+
+@healthauthority.route('/patient', methods=['POST'])
+@login_required
+def get_patient_informations_POST():
+
+    if(current_user.role != "ha"):
+        return make_response(render_template('error.html', message="Access denied!", redirect_url="/"), 403)
+
+    form = GetPatientInformationsForm(request.form)
+
+    if form.validate_on_submit():
+
+        try:
+
+            reply = requests.get(USER_SERVICE+'patient?email='+form.data['email'], timeout=REQUEST_TIMEOUT_SECONDS)
             reply_json = reply.json()
 
-            if reply.status_code == 404:
-                form.email.errors.append(reply_json['detail'])
-                return render_template('generic_template.html', form=form), 404
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
-            elif reply.status_code == 403:
-                form.email.errors.append(reply_json['detail'])
-                return render_template('generic_template.html', form=form), 403
+        if reply.status_code != 200:
+            form.email.errors.append(reply_json['detail'])
+            return make_response(render_template('generic_template.html', form=form), reply.status_code)
 
-            # email correct, show patient's informations 
-            else:
+        # email correct, show patient's informations 
+        else:
 
-                return redirect(url_for('.get_patient_informations',    email=reply_json['email'],
-                                                                        phone=reply_json['phone'],
-                                                                        firstname=reply_json['firstname'],
-                                                                        lastname=reply_json['lastname'],
-                                                                        dateofbirth=reply_json['dateofbirth'],
-                                                                        state=reply_json['state'],
-                                                                        startdate=reply_json['startdate'],
-                                                                        enddate=reply_json['enddate']
-                                                                        ))
+            return redirect(url_for('.get_patient_informations_POST',    email=reply_json['email'],
+                                                                    phone=reply_json['phone'],
+                                                                    firstname=reply_json['firstname'],
+                                                                    lastname=reply_json['lastname'],
+                                                                    dateofbirth=reply_json['dateofbirth'],
+                                                                    state=reply_json['state'],
+                                                                    startdate=reply_json['startdate'],
+                                                                    enddate=reply_json['enddate']
+                                                                    ))
 
-        #getuser = db.session.query(User).filter(User.email == request.args.get("email")).first()
-        #getuserquarantine_status = db.session.query(Quarantine).filter(Quarantine.user_id == getuser.id and Quarantine.in_observation == True).first()
-        #if request.form['mark_positive_button'] == 'mark_positive' and getuserquarantine_status is None:
-        if 'mark_positive_button' in request.form and request.form['mark_positive_button'] == 'mark_positive':
-                
+    if 'mark_positive_button' in request.form and request.form['mark_positive_button'] == 'mark_positive':
 
-            reply = requests.put('http://127.0.0.1:5060/mark?email='+request.args.get("email"))
+        try:
+            reply = requests.put(USER_SERVICE+'patient?email='+request.args.get("email"), timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
 
-            if reply.status_code == 404:
-            	return render_template('error.html', message=reply_json['detail'], redirect_url="/")
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
-            elif reply.status_code == 403:
-            	return render_template('error.html', message=reply_json['detail'], redirect_url="/")
+        if reply.status_code != 200:
+            return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
             '''
             # do contact tracing
@@ -70,29 +97,7 @@ def get_patient_informations():
             _check_future_reservations(getuser, quarantine.start_date)
             ''' 
             # this redirect isn't an error, it display that patient has been successfully marked positive
-            return make_response(render_template('error.html', message="Patient marked as positive", redirect_url="/"), 555)     
-
-    if 'go_back_button' in request.form and request.form['go_back_button'] == 'go_back':
-        return redirect('/patient_informations')
-
-    if 'email' in request.args:
-
-        html = 'patient_informations.html'
-        if request.args.get("state") == "patient already under observation":
-            html = 'patient_informations_nomarkbutton.html'
-            
-        return render_template(html, email=request.args.get("email"),
-                                                            firstname=request.args.get("firstname"),
-                                                            lastname=request.args.get("lastname"),
-                                                            dateofbirth=request.args.get("dateofbirth"),
-                                                            state=request.args.get("state"),
-                                                            startdate=request.args.get("startdate"),
-                                                            enddate=request.args.get("enddate")
-                                                            )
-
-
-    return render_template('generic_template.html', form=form)
-
+        return make_response(render_template('error.html', message="Patient marked as positive", redirect_url="/"), 555)     
 
 
 def _do_contact_tracing(positive, start_date):

@@ -45,7 +45,7 @@ class User(db.Model):
     dateofbirth = db.Column(db.Date)
 
     role = db.Column(db.String, nullable=False) 
-    notification = db.Column(PickleType) 
+    notification = db.Column(db.PickleType) 
 
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)
