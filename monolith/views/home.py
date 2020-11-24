@@ -8,6 +8,7 @@ import requests
 home = Blueprint('home', __name__)
 
 RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+REQUEST_TIMEOUT_SECONDS = 1
 
 @home.route('/')
 def index():
@@ -62,9 +63,15 @@ def index():
 
 
         if current_user.role == 'owner':
+            
+            try:
 
-            reply = requests.get(RESTAURANT_SERVICE+'restaurants?owner_id='+str(current_user.id))
-            reply_json = reply.json()
+                reply = requests.get(RESTAURANT_SERVICE+'restaurants?owner_id='+str(current_user.id), timeout=REQUEST_TIMEOUT_SECONDS)
+                reply_json = reply.json()
+
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                message = "Something gone wrong, restaurants list not available, try again later"
+                return render_template("homepage_info.html", message=message) 
 
             return render_template("homepage_info.html", restaurants=reply_json) 
     else:
