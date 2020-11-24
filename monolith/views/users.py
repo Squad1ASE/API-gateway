@@ -13,6 +13,12 @@ import datetime
 from monolith.views.restaurants import restaurant_delete
 import requests
 
+import time
+from datetime import date
+from time import mktime
+from datetime import timedelta
+
+
 users = Blueprint('users', __name__)
 
 
@@ -195,6 +201,9 @@ def editreservation(reservation_id):
     else: 
         old_res = response.json()
 
+
+
+
         seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 
         for seat in seat_query:
@@ -208,11 +217,18 @@ def editreservation(reservation_id):
                 if len(form.data['guest']) + 1 > form.data['places']:
                     return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='Too much guests!'), 400)
 
+                time_now = datetime.datetime.now().strftime('%H:%M')
+                if form.data['date'] < datetime.date.today() or (form.data['date']==datetime.date.today() and str(request.form['time'])<=time_now ):
+                    return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='You cannot edit a past reservertion'), 400)
+                
                 d = dict(
                     places=form.data['places'],
                     seats_email=form.data['guest'],
-                    booker_email = current_user.email
+                    booker_email = current_user.email,
+                    date = str(request.form['date']),
+                    time = str(request.form['time'])
                 )
+
 
                 data = requests.post('http://localhost:5100/reservations/'+str(reservation_id), json=d)
                 if data.status_code == 200:                
@@ -238,6 +254,12 @@ def editreservation(reservation_id):
         else:
             # in the GET we fill all the fields with the old values
             form['places'].data = old_res['places']
+
+            dt_str = old_res['date']
+            dt= datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            print(dt.date(), dt.time())
+            form['date'].data = dt.date()
+            form['time'].data = dt.time()
             if len(seat_query) > 0:
                 for idx, seat in enumerate(seat_query):    
                     email_form = EmailForm()
