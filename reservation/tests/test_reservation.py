@@ -7,7 +7,8 @@ from unittest import mock
 from unittest.mock import patch
 import datetime
 
-from reservation.views.reservation import get_restaurant, get_restaurant_name, create_reservation, edit_reservation
+from reservation.views.reservation import (get_restaurant, get_restaurant_name, create_reservation, edit_reservation,
+                                            confirm_participants, delete_reservation, delete_reservations)
 from reservation.utilities import (edit_reservation_EP, restaurant_example, confirm_participants_EP, participants_example,
                                         reservation_example, tables_example, restaurant_reservations_EP, 
                                         user_reservations_EP, create_reservation_EP, edit_reservation_example,
@@ -16,18 +17,77 @@ from reservation.utilities import (edit_reservation_EP, restaurant_example, conf
                                         edit_ERROR_reservation_future_example, edit_ERROR2_reservation_future_example,
                                         edit_ERROR3_reservation_future_example, delete_all_reservations_EP,
                                         delete_user_reservations_example, delete_restaurant_reservations_example,
-                                        get_reservation_EP, get_reservations_EP)
+                                        get_reservation_EP, get_reservations_EP, create_ERROR_reservation_example, 
+                                        create_ERROR2_reservation_example, create_ERROR3_reservation_example,
+                                        create_reservation_example, create_ERROR4_reservation_example,
+                                        delete_ERROR_reservations_example, delete_USER_reservations_example)
+
+
+# command : pytest tests -s --cov=reservation --cov-report term-missing
+
 
 @patch('reservation.views.reservation.get_restaurant')
 def test_unit_reservations(mock1, test_app):
-    tables = tables_example
-    
+    app, test_client = test_app
+
+    #-------------------------------------------------------------------------------CREATE
+    # creation of a reservation without a restaurant example
+    with app.test_request_context(json=reservation_example):
+        assert create_reservation()
+    reservation = db_session.query(Reservation).filter_by(id=1).first()
+    assert reservation is None
+
+    ok_mock = mock.MagicMock()
+    type(ok_mock).status_code = mock.PropertyMock(return_value=200)
+    ok_mock.json.return_value = restaurant_example
+    mock1.return_value = ok_mock
+
+    # creation of a reservation in a not working day
+    with app.test_request_context(json=create_ERROR_reservation_example):
+        assert create_reservation()
+    reservation = db_session.query(Reservation).filter_by(id=1).first()
+    assert reservation is None
+
+    # creation of a reservation in a not working time
+    with app.test_request_context(json=create_ERROR2_reservation_example):
+        assert create_reservation()
+    reservation = db_session.query(Reservation).filter_by(id=1).first()
+    assert reservation is None
+
+    # creation of a reservation but there are not tables with this capacity
+    with app.test_request_context(json=create_ERROR3_reservation_example):
+        assert create_reservation()
+    reservation = db_session.query(Reservation).filter_by(id=1).first()
+    assert reservation is None
+
+    # creation of a reservation and occupy all the tables
+    with app.test_request_context(json=create_reservation_example):
+        assert create_reservation()
+    reservation = db_session.query(Reservation).first()
+    assert reservation is not None
+    assert reservation.id == 1
+    assert reservation.restaurant_id == create_reservation_example['restaurant_id'] #1
+    assert reservation.date == datetime.datetime(2020, 11, 20, 12, 0)
+    assert reservation.places == create_reservation_example['places']
+    assert reservation.cancelled is None
+
+    # creation of new reservation but there are no more tables
+    with app.test_request_context(json=create_ERROR4_reservation_example):
+        assert create_reservation()
+    again_reservation = db_session.query(Reservation).filter_by(id=2).first()
+    assert again_reservation is None
+
+    db_session.delete(reservation)
+    db_session.commit()
+
+
+    #--------------------------------------------------------------------------------------EDIT
+
+    tables = tables_example    
     ok_mock = mock.MagicMock()
     type(ok_mock).status_code = mock.PropertyMock(return_value=200)
     ok_mock.json.return_value = restaurant_h24_example
     mock1.return_value = ok_mock
-
-    app, test_client = test_app
 
     # creation of a reservation
     with app.test_request_context(json=reservation_example):
@@ -72,18 +132,84 @@ def test_unit_reservations(mock1, test_app):
     assert db_session.query(Seat).filter_by(reservation_id=2, guests_email='test@test.com').first() != None
     assert db_session.query(Seat).filter_by(reservation_id=2, guests_email='test2@test.com').first() != None
     
-# command : pytest tests -s --cov=reservation --cov-report term-missing
-#TODO:
-# create with 500 from restaurant
-# create with no workingday - create when the rest is closed
-# create with no tables - create with no tables free
-# create with time_span false
-# confirm with wrong res id
-# confirm with old res
+    #-------------------------------------------------------------------------------PARTICIPANTS
 
+    # confirm participants of a not existing reservation
+    with app.test_request_context():
+        assert confirm_participants(100)
+
+    # confirm participants of a too old reservation
+    with app.test_request_context():
+        assert confirm_participants(1)
+
+    #-------------------------------------------------------------------------------DELETE
+
+    # delete a reservation of the past
+    with app.test_request_context():
+        assert delete_reservation(1)
+
+    # delete a reservation that does not exist
+    with app.test_request_context():
+        assert delete_reservation(100)
+
+    # delete a reservation of the future but restaurant is not available ------------------------------
+    wrong_mock = mock.MagicMock()
+    type(wrong_mock).status_code = mock.PropertyMock(return_value=500)
+    wrong_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = wrong_mock
+
+    with app.test_request_context():
+        assert delete_reservation(2)
+    reservations = db_session.query(Reservation).all()
+    assert reservations != None
+    #---------------------------------------------------------------------------------------------------
+    """
+    ok_mock = mock.MagicMock()
+    type(ok_mock).status_code = mock.PropertyMock(return_value=200)
+    ok_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = ok_mock
+
+    with app.test_request_context(json=delete_ERROR_reservations_example):
+        assert delete_reservations()
+    reservations = db_session.query(Reservation).all()
+    assert reservations != None
+
+    wrong_mock = mock.MagicMock()
+    type(wrong_mock).status_code = mock.PropertyMock(return_value=500)
+    wrong_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = wrong_mock
+
+    with app.test_request_context(json=delete_USER_reservations_example):
+        assert delete_reservations()
+
+    ok_mock = mock.MagicMock()
+    type(ok_mock).status_code = mock.PropertyMock(return_value=200)
+    ok_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = ok_mock
+
+    with app.test_request_context(json=delete_USER_reservations_example):
+        assert delete_reservations()
+
+    wrong_mock = mock.MagicMock()
+    type(wrong_mock).status_code = mock.PropertyMock(return_value=500)
+    wrong_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = wrong_mock
+
+    with app.test_request_context(json=delete_RESTAURANT_reservations_example):
+        assert delete_reservations()
+
+    ok_mock = mock.MagicMock()
+    type(ok_mock).status_code = mock.PropertyMock(return_value=200)
+    ok_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = ok_mock
+
+    with app.test_request_context(json=delete_RESTAURANT_reservations_example):
+        assert delete_reservations()
+    """
 
 @patch('reservation.views.reservation.get_restaurant')
 def test_component_reservations(mock1, test_app):
+
     tables = tables_example
     ok_mock = mock.MagicMock()
     type(ok_mock).status_code = mock.PropertyMock(return_value=200)
@@ -161,6 +287,7 @@ def test_component_delete(mock1, mock2, test_app):
         type(ok_mock1).status_code = mock.PropertyMock(return_value=200)
         ok_mock1.json.return_value = restaurant_h24_example
         mock1.return_value = ok_mock2
+
         app, test_client = test_app
         # delete the reservation
         assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
@@ -177,6 +304,7 @@ def test_component_delete(mock1, mock2, test_app):
         assert get_reservation_EP(test_client, res.id).status_code == 404
         db_session.delete(res)
         db_session.commit()
+
         # recreate the reservation
         assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
         res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
