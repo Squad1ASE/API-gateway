@@ -1,6 +1,12 @@
 import datetime
 from datetime import timedelta
 
+def get_reservation_EP(test_client, reservation_id):
+    return test_client.get('/reservations/'+str(reservation_id))
+    
+def get_reservations_EP(test_client, query):
+    return test_client.get('/reservations' + query)
+
 def restaurant_reservations_EP(test_client, restaurant_id):
     return test_client.get('/reservations?restaurant_id='+str(restaurant_id))
 
@@ -19,15 +25,24 @@ def edit_reservation_EP(test_client, reservation_id, info):
 def delete_reservation_EP(test_client, reservation_id):
     return test_client.delete('/reservations/'+str(reservation_id))
 
-#TODO: def delete_all_reservations(test_client, )
+def delete_all_reservations_EP(test_client, id):
+    return test_client.delete('/reservations', json=id)
 
 participants_example = [
     'userexample1@test.com',
     'test@test.com'
 ]
 
+delete_user_reservations_example = {
+    'user_id' : 3
+}
+
+delete_restaurant_reservations_example = {
+    'restaurant_id' : 2
+}
+
 reservation_now_example = dict(
-    booker_id = 1,
+    booker_id = 2,
     booker_email = 'userexample1@test.com',
     restaurant_id = 2,
     date = datetime.datetime.now().strftime('%d/%m/%Y'),
@@ -38,7 +53,7 @@ reservation_now_example = dict(
 reservation_example = dict(
     booker_id = 1,
     booker_email = 'userexample1@test.com',
-    restaurant_id = 1,
+    restaurant_id = 2,
     date = '20/11/2020',
     time = '12:00',
     places = 2
@@ -53,9 +68,9 @@ edit_reservation_example = {
 }
 
 reservation_future_example = dict(
-    booker_id = 2,
+    booker_id = 3,
     booker_email = 'userexample1@test.com',
-    restaurant_id = 1,
+    restaurant_id = 2,
     date = (datetime.datetime.now() + timedelta(days=1)).strftime('%d/%m/%Y'),
     time = datetime.datetime.now().strftime('%H:%M'),
     places = 2

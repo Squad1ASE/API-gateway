@@ -111,26 +111,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+    
     delete:
       tags:
-        - Delete all reservations for this restaurant
-      summary: Delete all reservations for this restaurant
-      parameters:
-          - in: query   #todo change
-            name: param
-            required: true
+        - Delete all reservations for a restaurant or user
+      summary: Delete all reservations for a restaurant or user 
+      operationId: reservation.views.reservation.delete_reservations
+      requestBody:
+        description: Unique ID of the restaurants restaurant or user
+        required: true
+        content:
+          application/json:
             schema:
               type: object
               properties:
                 user_id:
                   type: integer
+                  example: 1
                 restaurant_id:
                   type: integer
-              additionalProperties: false
-            style: form
-            explode: true
-            
-      operationId: reservation.views.reservation.delete_reservations
+                  example: 1
       responses:
         200:
           description: Restaurant reservations deleted

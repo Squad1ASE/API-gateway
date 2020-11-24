@@ -548,10 +548,10 @@ def reservation_list():
     restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
     for restaurant in restaurants_records:
         response = requests.get('http://localhost:5100/reservations?restaurant_id='+str(restaurant.id))
-        if (response != 200):
-            if response == 500:
+        if (response.status_code != 200):
+            if response.status_code == 500:
                 return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
-            elif response == 400:
+            elif response.status_code == 400:
                 return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/", 400))
             else:
                 return make_response(render_template('error.html', message='Error', redirect_url='/', 500))
@@ -591,10 +591,10 @@ def confirm_participants(restaurant_id, reservation_id):
 
     # check if the reservation is in the past or in the future
     response = requests.get('http://127.0.0.1:5100/reservations/'+str(reservation_id))
-    if response != 200:
-        if response == 500:
+    if response.status_code != 200:
+        if response.status_code == 500:
             return make_response(render_template('error.html', message="Try it later", redirect_url="/restaurants/<restaurant_id>"), 500)
-        elif response == 400:
+        elif response.status_code == 400:
             return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/restaurants/<restaurant_id>", 400))
         else:
             return make_response(render_template('error.html', message='Error', redirect_url='/restaurants/<restaurant_id>', 500))

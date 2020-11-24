@@ -10,7 +10,7 @@ import connexion
 import ast
 import reservation.app
 #from app.application import delete_restaurant_reservations_task
-from reservation.api_call import get_restaurant
+from reservation.api_call import get_restaurant, get_restaurant_name
 import dateutil.parser
 from sqlalchemy import or_, and_
 
@@ -37,7 +37,7 @@ def get_all_reservations():
 
 # get the reservation with specific id
 def get_reservation(reservation_id):
-    reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
+    reservation = db_session.query(Reservation).filter(Reservation.id==reservation_id, Reservation.cancelled==None).first()
     if reservation is None:
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
@@ -73,15 +73,15 @@ def convert_weekday(day):
 def create_reservation():
 
     r = request.json
-    print(r)
+    #print(r)
 
     date_str = r['date'] + ' ' + r['time']
     date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
     restaurant_id = r['restaurant_id']
     
     response = get_restaurant(restaurant_id)
-    if (response != 200):
-        connexion.problem(500, 'Internal Server Error', 'Service Restaurant is not available at the moment')
+    if (response.status_code != 200):
+        return connexion.problem(500, 'Internal Server Error', 'Service Restaurant is not available at the moment')
     restaurant = response.json()
     # check if the day is open this day
     weekday = date.weekday() + 1
@@ -93,6 +93,7 @@ def create_reservation():
         #if w['day'] == weekday:
             workingday = w
     if workingday is None:
+        print('1')
         return connexion.problem(400, 'Error', 'Restaurant is not open this day!')
     
     # check if the restaurant is open this hours
@@ -109,6 +110,7 @@ def create_reservation():
             print(e)
 
     if time_span is False:
+        print('3')
         return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
 
     # check if there is any table with this capacity
@@ -118,6 +120,7 @@ def create_reservation():
         if table['capacity'] >= r['places']:
             tables.append(table)
     if len(tables) == 0:
+        print('2')
         return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
     
     # check if there is a table for this amount of time
@@ -159,7 +162,6 @@ def create_reservation():
 
 def confirm_participants(reservation_id):
     r = request.json
-    print(r)
     # get the reservation
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
@@ -191,7 +193,7 @@ def delete_reservation(reservation_id):
             return connexion.problem(403, 'Error', "You can't delete a past reservation")
         
         response = get_restaurant(reservation.restaurant_id)
-        if response != 200:
+        if response.status_code != 200:
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
         restaurant = response.json()
 
@@ -216,16 +218,18 @@ def delete_reservation(reservation_id):
 def delete_reservations():
     body = request.json
     if 'restaurant_id' in body and 'user_id' in body:   #todo prenderli dal request body
+        print('too much parameters in body')
         return connexion.problem('400', 'Error', 'Too much query arguments')
     elif 'user_id' in body:
-        user_id = request.args.get('user_id')
+        user_id = body['user_id']
+        print('cancel reservations for user ' + str(user_id))
         reservations = db_session.query(Reservation).filter(
-            Reservation.booker_id == int(user_id),
+            Reservation.booker_id == user_id,
         ).all()
 
         for reservation in reservations:
             response = get_restaurant(reservation.restaurant_id)
-            if response != 200:
+            if response.status_code != 200:
                 return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
             restaurant = response.json()
 
@@ -237,12 +241,14 @@ def delete_reservations():
                     break
             restaurant_owner_id = restaurant['owner_id']
             reservation.cancelled = 'user_deleted' +' '+str(restaurant_owner_id)+' '+str(table_name)
+            print('cancel user reservation', reservation.cancelled)
             db_session.commit()
         return "User reservations deleted"
     elif 'restaurant_id' in body:
-        restaurant_id = request.args.get('restaurant_id')
+        restaurant_id = body['restaurant_id']
+        print('delete reservations for restaurant', restaurant_id)
         response = get_restaurant_name(restaurant_id)
-        if response != 200:
+        if response.status_code != 200:
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
         restaurant_name = response.json()
 
@@ -284,9 +290,8 @@ def edit_reservation(reservation_id):
 
         
     if r['places'] != old_res.places: # change table_id only if places changed        
-  
         response = get_restaurant(old_res.restaurant_id)
-        if response != 200:
+        if (response.status_code != 200):
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
         restaurant = response.json()
         avg_time_of_stay = restaurant['avg_time_of_stay']
@@ -302,7 +307,6 @@ def edit_reservation(reservation_id):
                     tables.append(table)
 
         if len(tables) == 0 and found == False:
-            print(tables)
             return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
 
         elif found == False: 
@@ -323,7 +327,7 @@ def edit_reservation(reservation_id):
                     table_id_reservation = table['id']
                     break
             if table_id_reservation is None:
-                print(table_id_reservation)
+                #print(table_id_reservation)
                 return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
 
             else:
@@ -476,10 +480,11 @@ def do_contact_tracing():
                 Reservation.date >= start_date
             ).with_entities(
                 Reservation.date,
-                Reservation.restaurant_id
+                Reservation.restaurant_id,
+                Reservation.booker_id
             ).distinct()
 
-        for date,restaurant_id in future_reservations:
+        for date, restaurant_id, booker_id in future_reservations:
             response = get_restaurant(restaurant_id)
             if response.status_code != 200:
                 return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
@@ -490,7 +495,8 @@ def do_contact_tracing():
             notification = {
                 "type": 'reservation_with_positive',
                 "message": message,
-                "user_id": restaurant['owner_id']
+                "user_id": restaurant['owner_id'],
+                "booker_id": booker_id
             }
             notifications.append(notification)
 
