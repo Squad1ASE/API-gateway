@@ -28,6 +28,14 @@ def delete_reservation_EP(test_client, reservation_id):
 def delete_all_reservations_EP(test_client, id):
     return test_client.delete('/reservations', json=id)
 
+def contact_tracing_EP(test_client, info):
+    return test_client.put('/contact_tracing', json=info)
+
+contact_tracing_example = {
+    'email':'userexample1@test.com',
+    'start_date': datetime.date.today()
+}
+
 participants_example = [
     'userexample1@test.com',
     'test@test.com'
@@ -40,6 +48,15 @@ delete_user_reservations_example = {
 delete_restaurant_reservations_example = {
     'restaurant_id' : 2
 }
+
+reservation_yesterday_example = dict(
+    booker_id = 4,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 2,
+    date = (datetime.datetime.now() - timedelta(days=1)).strftime('%d/%m/%Y'),
+    time = datetime.datetime.now().strftime('%H:%M'),
+    places = 2
+)
 
 reservation_now_example = dict(
     booker_id = 2,
@@ -108,38 +125,6 @@ edit_ERROR3_reservation_future_example = {
 }
 
 
-
-
-'''
-workingdays_example = [{
-        "day": "friday",
-        "restaurant_id": 1,
-        "work_shifts": [
-            [
-                "12:00",
-                "15:00"
-            ],
-            [
-                "19:00",
-                "23:00"
-            ]
-        ]
-    },
-    {
-        "day": "saturday",
-        "restaurant_id": 1,
-        "work_shifts": [
-            [
-                "12:00",
-                "15:00"
-            ],
-            [
-                "19:00",
-                "23:00"
-            ]
-        ]
-}]
-'''
 tables_example = [{
     'capacity':5,
     'id':1,

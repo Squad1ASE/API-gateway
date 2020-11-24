@@ -24,10 +24,11 @@ import requests
 
 api_stub = Blueprint('api_stub', __name__)
 
-restaurant_example = {
+
+restaurant_h24_example = {
     "avg_rating": 0.0,
     "avg_time_of_stay": 40,
-    "capacity": 5,
+    "capacity": 10,
     "cuisine_type": [
         "italian",
         "traditional"
@@ -38,21 +39,21 @@ restaurant_example = {
             "ingredients": "tomato,mozzarella",
             "name": "pizza",
             "price": 4.5,
-            "restaurant_id": 1
+            "restaurant_id": 2
         },
         {
             "id": 2,
             "ingredients": "pasta,tomato",
             "name": "pasta",
             "price": 6.5,
-            "restaurant_id": 1
+            "restaurant_id": 2
         }
     ],
-    "id": 1,
+    "id": 2,
     "lat": 42.42,
     "likes": 0,
     "lon": 42.42,
-    "name": "My Pizza Restaurant",
+    "name": "Restaurant h24",
     "owner_id": 123,
     "phone": "050123456",
     "prec_measures": "Adopted the measures envisaged by the DPCM 'X'",
@@ -61,50 +62,100 @@ restaurant_example = {
             "capacity": 5,
             "id": 1,
             "name": "yellow",
-            "restaurant_id": 1
+            "restaurant_id": 2
+        },
+        {
+            "capacity": 5,
+            "id": 2,
+            "name": "blue",
+            "restaurant_id": 2
         }
     ],
     "tot_reviews": 0,
     "working_days": [
         {
-            "day": "friday",
-            "restaurant_id": 1,
+            "day": "monday",
+            "restaurant_id": 2,
             "work_shifts": [
                 [
-                    "12:00",
-                    "15:00"
-                ],
+                    "00:00",
+                    "23:59"
+                ]
+            ]
+        },
+        {
+            "day": "tuesday",
+            "restaurant_id": 2,
+            "work_shifts": [
                 [
-                    "19:00",
-                    "23:00"
+                    "00:00",
+                    "23:59"
+                ]
+            ]
+        },
+        {
+            "day": "wednesday",
+            "restaurant_id": 2,
+            "work_shifts": [
+                [
+                    "00:00",
+                    "23:59"
+                ]
+            ]
+        },
+        {
+            "day": "thursday",
+            "restaurant_id": 2,
+            "work_shifts": [
+                [
+                    "00:00",
+                    "23:59"
+                ]
+            ]
+        },
+        {
+            "day": "friday",
+            "restaurant_id": 2,
+            "work_shifts": [
+                [
+                    "00:00",
+                    "23:59"
                 ]
             ]
         },
         {
             "day": "saturday",
-            "restaurant_id": 1,
+            "restaurant_id": 2,
             "work_shifts": [
                 [
-                    "12:00",
-                    "15:00"
-                ],
+                    "00:00",
+                    "23:59"
+                ]
+            ]
+        },
+        {
+            "day": "sunday",
+            "restaurant_id": 2,
+            "work_shifts": [
                 [
-                    "19:00",
-                    "23:00"
+                    "00:00",
+                    "23:59"
                 ]
             ]
         }
     ]
 }
 
+
+
 @api_stub.route('/stub/restaurant')
 def send_restaurant():
-    return restaurant_example
+    return restaurant_h24_example
 
 
 @api_stub.route('/stub/restaurants/name')
 def get_owner(restaurant_id):
-    return restaurant_example['name']
+    return restaurant_h24_example['name']
 
 '''
 
