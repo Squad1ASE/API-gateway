@@ -16,6 +16,7 @@ from sqlalchemy import or_, and_
 
 reservations = Blueprint('reservation', __name__)
 
+
 # get all the reservation
 def get_all_reservations():
     q = db_session.query(Reservation).filter_by(cancelled=None)
@@ -88,7 +89,7 @@ def create_reservation():
     workingdays = restaurant['working_days']#get_workingdays(restaurant_id).json()
     workingday = None
     for w in workingdays:
-        #TODO: this line if the day is in string format
+        #this line if the day is in string format
         if convert_weekday(w['day']) == weekday:
         #if w['day'] == weekday:
             workingday = w
