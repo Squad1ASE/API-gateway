@@ -112,6 +112,19 @@ def get_patient_informations():
 def _do_contact_tracing(positive, start_date):
     # first retrieve the reservations of the last 14 days in which the positive was present
     pre_date = start_date - timedelta(days=14)
+    d = {
+        'email':positive.email,
+        'start_date':start_date
+    }
+    response = requests.put('http:127.0.0.1:5100/contact_tracing', json=d)
+    if response.status_code == 200:
+        print(response)
+    else:
+        print(response)
+
+
+
+    '''
     user_reservations = db.session.query(Seat)\
         .join(Reservation, Reservation.id == Seat.reservation_id)\
         .filter(
@@ -150,7 +163,7 @@ def _do_contact_tracing(positive, start_date):
 
         owners_to_be_notified.add((date, owner_email, owner_id))
 
-        '''
+        
         //.............(date)..............................................................
                         20:00    20:15                         20:25    20:40
         //________________|--------|*****************************|--------|________________
@@ -163,7 +176,7 @@ def _do_contact_tracing(positive, start_date):
         // or start at    |______________________________________|         
 
         // or end at               |______________________________________|
-        '''
+        
 
         start_contagion_time = date + timedelta(minutes=15)
         span = avg_time_of_stay - 15
@@ -275,3 +288,4 @@ def _check_future_reservations(positive, start_date):
             db.session.add(notification)
 
         db.session.commit()
+    '''

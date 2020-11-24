@@ -186,10 +186,16 @@ def restaurant_sheet(restaurant_id):
                         places = form.guests.data
                     )
                     #print(temp_dict)
-                    if requests.put('http://127.0.0.1:5100/reservations', json=temp_dict).status_code == 200:
+                    res = requests.put('http://127.0.0.1:5100/reservations', json=temp_dict)
+                    if res.status_code == 200:
                         return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
                     else:
-                        return make_response(render_template('error.html', message="Error", redirect_url="/"), 403)
+                        if res.status_code == 400:
+                            return make_response(render_template('error.html', message="Bad Request", redirect_url="/"), 400)
+                        elif res.status_code == 500:
+                            return make_response(render_template('error.html', message="Try again later", redirect_url="/"), 500)
+                        else:
+                            return make_response(render_template('error.html', message="Error", redirect_url="/"), 500)
 
     return render_template("restaurantsheet.html", **data_dict)
 
@@ -229,7 +235,7 @@ def restaurant_delete(restaurant_id):
 
     return make_response(render_template('error.html', message="Restaurant successfully deleted", redirect_url="/"), 200)
 
-
+'''
 @restaurants.route('/restaurants/<int:restaurant_id>/reservation', methods=['GET','POST'])
 @login_required
 def reservation(restaurant_id):
@@ -311,6 +317,7 @@ def reservation(restaurant_id):
                 return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
                 
     return render_template('reservation.html', form=form)
+'''
 
 
 @restaurants.route('/restaurants/like/<restaurant_id>')
@@ -477,7 +484,7 @@ def restaurant_edit(restaurant_id):
             redirect_url="/login"
         ), 403)
 
-
+'''
 @restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['GET', 'POST'])
 @login_required
 def create_review(restaurant_id):
@@ -536,7 +543,7 @@ def create_review(restaurant_id):
 
     else:
         return render_template("reviews_owner.html", reviews=reviews), 555
-
+'''
 @restaurants.route('/restaurants/reservation_list', methods=['GET'])
 @login_required
 def reservation_list():
@@ -552,9 +559,9 @@ def reservation_list():
             if response.status_code == 500:
                 return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
             elif response.status_code == 400:
-                return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/", 400))
+                return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/"), 400)
             else:
-                return make_response(render_template('error.html', message='Error', redirect_url='/', 500))
+                return make_response(render_template('error.html', message='Error', redirect_url='/'), 500)
         else:
 
             for reservation in response.json():
@@ -595,9 +602,9 @@ def confirm_participants(restaurant_id, reservation_id):
         if response.status_code == 500:
             return make_response(render_template('error.html', message="Try it later", redirect_url="/restaurants/<restaurant_id>"), 500)
         elif response.status_code == 400:
-            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/restaurants/<restaurant_id>", 400))
+            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/restaurants/<restaurant_id>"), 400)
         else:
-            return make_response(render_template('error.html', message='Error', redirect_url='/restaurants/<restaurant_id>', 500))
+            return make_response(render_template('error.html', message='Error', redirect_url='/restaurants/<restaurant_id>'), 500)
     else: 
         res = response.json()
         seats = res['seats']

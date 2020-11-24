@@ -8,23 +8,23 @@ from unittest.mock import patch
 import datetime
 
 from reservation.views.reservation import (get_restaurant, get_restaurant_name, create_reservation, edit_reservation,
-                                            confirm_participants, delete_reservation, delete_reservations)
+                                            confirm_participants, delete_reservation, delete_reservations, put_notification)
 from reservation.utilities import (edit_reservation_EP, restaurant_example, confirm_participants_EP, participants_example,
                                         reservation_example, tables_example, restaurant_reservations_EP, 
                                         user_reservations_EP, create_reservation_EP, edit_reservation_example,
                                         delete_reservation_EP, restaurant_h24_example, reservation_future_example, 
-                                        reservation_now_example, edit_reservation_future_example,
+                                        reservation_now_example, edit_reservation_future_example, reservation_yesterday_example,
                                         edit_ERROR_reservation_future_example, edit_ERROR2_reservation_future_example,
                                         edit_ERROR3_reservation_future_example, delete_all_reservations_EP,
                                         delete_user_reservations_example, delete_restaurant_reservations_example,
                                         get_reservation_EP, get_reservations_EP, create_ERROR_reservation_example, 
                                         create_ERROR2_reservation_example, create_ERROR3_reservation_example,
                                         create_reservation_example, create_ERROR4_reservation_example,
-                                        delete_ERROR_reservations_example, delete_USER_reservations_example)
+                                        delete_ERROR_reservations_example, delete_USER_reservations_example,
+                                        contact_tracing_EP, contact_tracing_example)
 
 
 # command : pytest tests -s --cov=reservation --cov-report term-missing
-
 
 @patch('reservation.views.reservation.get_restaurant')
 def test_unit_reservations(mock1, test_app):
@@ -278,37 +278,58 @@ def test_component_reservations(mock1, test_app):
 @patch('reservation.views.reservation.get_restaurant')
 @patch('reservation.views.reservation.get_restaurant_name')
 def test_component_delete(mock1, mock2, test_app):
-        ok_mock2 = mock.MagicMock()
-        ok_mock1 = mock.MagicMock()
-        type(ok_mock2).status_code = mock.PropertyMock(return_value=200)
-        ok_mock2.json.return_value = restaurant_h24_example['name']
-        mock2.return_value = ok_mock1
-        ok_mock = mock.MagicMock()
-        type(ok_mock1).status_code = mock.PropertyMock(return_value=200)
-        ok_mock1.json.return_value = restaurant_h24_example
-        mock1.return_value = ok_mock2
+    ok_mock2 = mock.MagicMock()
+    ok_mock1 = mock.MagicMock()
+    type(ok_mock2).status_code = mock.PropertyMock(return_value=200)
+    ok_mock2.json.return_value = restaurant_h24_example['name']
+    mock2.return_value = ok_mock1
+    ok_mock = mock.MagicMock()
+    type(ok_mock1).status_code = mock.PropertyMock(return_value=200)
+    ok_mock1.json.return_value = restaurant_h24_example
+    mock1.return_value = ok_mock2
+    app, test_client = test_app
+    # delete the reservation
+    assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
+    res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
+    assert delete_reservation_EP(test_client, res.id).status_code == 200
+    db_session.delete(res)
+    db_session.commit()
+    # recreate the reservation
+    assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
+    assert get_reservations_EP(test_client, '?user_id='+str(reservation_future_example['booker_id'])).status_code == 200
+    res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
+    # delete the reservations of the user
+    assert delete_all_reservations_EP(test_client, delete_user_reservations_example).status_code == 200
+    assert get_reservation_EP(test_client, res.id).status_code == 404
+    db_session.delete(res)
+    db_session.commit()
+    # recreate the reservation
+    assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
+    res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
+    # delete the reservations of the restaurant
+    assert delete_all_reservations_EP(test_client, delete_restaurant_reservations_example).status_code == 200
 
-        app, test_client = test_app
-        # delete the reservation
-        assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
-        res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
-        assert delete_reservation_EP(test_client, res.id).status_code == 200
-        db_session.delete(res)
-        db_session.commit()
-        # recreate the reservation
-        assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
-        assert get_reservations_EP(test_client, '?user_id='+str(reservation_future_example['booker_id'])).status_code == 200
-        res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
-        # delete the reservations of the user
-        assert delete_all_reservations_EP(test_client, delete_user_reservations_example).status_code == 200
-        assert get_reservation_EP(test_client, res.id).status_code == 404
-        db_session.delete(res)
-        db_session.commit()
-
-        # recreate the reservation
-        assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
-        res = db_session.query(Reservation).filter_by(booker_id = reservation_future_example['booker_id']).first()
-        # delete the reservations of the restaurant
-        assert delete_all_reservations_EP(test_client, delete_restaurant_reservations_example).status_code == 200
-
+@patch('reservation.views.reservation.get_restaurant')
+@patch('reservation.views.reservation.put_notification')
+def test_contact_tracing(mock1, mock2, test_app):
+    app, test_client = test_app
+    ok_mock1 = mock.MagicMock()
+    type(ok_mock1).status_code = mock.PropertyMock(return_value=200)
+    mock1.return_value = ok_mock1
+    ok_mock2 = mock.MagicMock()
+    type(ok_mock2).status_code = mock.PropertyMock(return_value=200)
+    ok_mock2.json.return_value = restaurant_h24_example
+    mock2.return_value = ok_mock2
+    assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
+    assert create_reservation_EP(test_client, reservation_yesterday_example).status_code == 200
+    res = db_session.query(Reservation).filter_by(booker_id = reservation_yesterday_example['booker_id']).first()
+    # add a participants and send notification to it and to owner of the restaurant
+    res.seats[0].confirmed = True
+    seat = Seat()
+    seat.reservation_id = res.id  
+    seat.guests_email = 'test@test.com'
+    seat.confirmed = True
+    res.seats.append(seat)
+    db_session.commit()
+    assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 200
 

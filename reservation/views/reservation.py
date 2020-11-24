@@ -10,7 +10,7 @@ import connexion
 import ast
 import reservation.app
 #from app.application import delete_restaurant_reservations_task
-from reservation.api_call import get_restaurant, get_restaurant_name
+from reservation.api_call import get_restaurant, get_restaurant_name, put_notification
 import dateutil.parser
 from sqlalchemy import or_, and_
 
@@ -93,7 +93,6 @@ def create_reservation():
         #if w['day'] == weekday:
             workingday = w
     if workingday is None:
-        print('1')
         return connexion.problem(400, 'Error', 'Restaurant is not open this day!')
     
     # check if the restaurant is open this hours
@@ -110,7 +109,6 @@ def create_reservation():
             print(e)
 
     if time_span is False:
-        print('3')
         return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
 
     # check if there is any table with this capacity
@@ -120,7 +118,6 @@ def create_reservation():
         if table['capacity'] >= r['places']:
             tables.append(table)
     if len(tables) == 0:
-        print('2')
         return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
     
     # check if there is a table for this amount of time
@@ -214,6 +211,7 @@ def delete_reservation(reservation_id):
         return "The reservation is deleted"
     return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
 
+#TODO: testare con altri microservizi
 def delete_reservations():
     body = request.json
     if 'restaurant_id' in body and 'user_id' in body:   #todo prenderli dal request body
@@ -362,19 +360,24 @@ def edit_reservation(reservation_id):
 
     return 'Reservation is edited successfully'
 
+#TODO: testare in interfaccia web
 def do_contact_tracing():
 
     body = request.json
+
+    print(body)
     if 'email' not in body:
         return connexion.problem('400', 'Error', 'You must specify an email')
     if 'start_date' not in body:
         return connexion.problem('400', 'Error', 'You must specify a date')
 
     positive_email=body['email']
-    start_date=datetime.datetime.strptime(body['start_date'], '%m/%d/%y')
+    start_date=datetime.datetime.strptime(body['start_date'], '%Y-%m-%d')
+    #start_date = body['start_date']
 
     # first retrieve the reservations of the last 14 days in which the positive was present
     pre_date = start_date - timedelta(days=14)
+    print(start_date, pre_date)
     positive_reservations = db_session.query(Seat)\
         .join(Reservation, Reservation.id == Seat.reservation_id)\
         .filter(
@@ -394,6 +397,7 @@ def do_contact_tracing():
 
     user_reservations=[]
     for date,restaurant_id in positive_reservations:
+        print(date)
         response = get_restaurant(restaurant_id)
         if response.status_code != 200:
             return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
@@ -498,12 +502,12 @@ def do_contact_tracing():
                 "booker_id": booker_id
             }
             notifications.append(notification)
-
-        res = requests.put('http://127.0.0.1:5000/users/notification', json=json.dumps(notification))
-        if res != 200:
-            return connexion.problem(500, 'Internal Server Error', 'Service user is unavailable at the moment')
-        else:
-            return 200
+    print(notifications)
+    res = put_notification(notifications)
+    if res.status_code != 200:
+        return connexion.problem(500, 'Internal Server Error', 'Service user is unavailable at the moment')
+    else:
+        return 'Contact tracing completed'
 
 
         

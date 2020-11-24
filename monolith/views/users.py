@@ -140,9 +140,9 @@ def reservation_list():
         if response.status_code == 500:
             return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
         elif response.status_code == 400:
-            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/", 400))
+            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/"), 400)
         else:
-            return make_response(render_template('error.html', message='Error', redirect_url='/', 500))
+            return make_response(render_template('error.html', message='Error', redirect_url='/'), 500)
     else:
         reservation_records = response.json()
         data_dict=[]
@@ -186,12 +186,12 @@ def editreservation(reservation_id):
 
     response = requests.get('http://localhost:5100/reservations/'+str(reservation_id))
     if response.status_code != 200:
-        if response.status_code == 404
+        if response.status_code == 404:
             return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
         elif response.status_code == 500:
             return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
         else:
-            return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list', 500))
+            return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list'), 500)
     else: 
         old_res = response.json()
 
@@ -220,14 +220,14 @@ def editreservation(reservation_id):
                     return make_response(render_template('error.html', message="Reservation changed!", redirect_url="/"), 200)
 
                 else:
-                    if response.status_code == 404
+                    if response.status_code == 404:
                         return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
                     elif response.status_code == 500:
                         return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
                     elif response.status_code == 400:
-                        return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/users/reservation_list", 400))
+                        return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/users/reservation_list"), 400)
                     else:
-                        return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list', 500))
+                        return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list'), 500)
 
 
             else:
