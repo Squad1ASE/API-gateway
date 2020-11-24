@@ -1,14 +1,10 @@
 import os
 from flask import Flask
-from monolith.database import ( db, User, Restaurant, Table, WorkingDay,
-                                Reservation, Like, Seat, Review, 
-                                Dish, Quarantine, Notification )
+from monolith.database import ( db, User, Quarantine, Notification )
 from monolith.views import blueprints
 from monolith.auth import login_manager
 from monolith.utilities import ( insert_ha, create_user_EP, user_login_EP, 
-                                user_logout_EP, create_restaurant_EP, customers_example, 
-                                restaurant_example, admin_example, health_authority_example, 
-                                restaurant_owner_example )
+                                user_logout_EP, customers_example, admin_example, health_authority_example)
 import datetime
 from datetime import timedelta, date
 
@@ -19,12 +15,15 @@ from flask_mail import Message, Mail
 mail = None
 
         
+RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+
 def create_app():
     app = Flask(__name__)
     app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
     app.config['SECRET_KEY'] = 'ANOTHER ONE'
     #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@postgres:5432/postgres'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///monolith.db"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     
@@ -133,6 +132,7 @@ def make_celery(app):
 
     }
 
+    '''
     class ContextTask(celery.Task):
         def __call__(self, *args, **kwargs):
             with app.app_context():
@@ -140,11 +140,12 @@ def make_celery(app):
 
     celery.Task = ContextTask
     return celery
+    '''
 
 app = create_app()
-celery = make_celery(app)
+#celery = make_celery(app)
     
-
+'''
 @celery.task
 def print_hello():
     print('Hello from Celery!')
@@ -190,7 +191,7 @@ def del_inactive_users():
                 user_to_delete.password = 'pw'
                 user_to_delete.dateofbirth = None 
                 db.session.commit()
-            ''' a cosa serve questa cosa?? 
+            # a cosa serve questa cosa?? 
             else:
                 for r in rs:
                     # lascio queste stampe
@@ -205,7 +206,7 @@ def del_inactive_users():
                         user_to_delete.password = 'pw'
                         user_to_delete.dateofbirth = None 
                         db.session.commit()
-            '''
+            
 
         # cosi la reservation.date tiene conto dell'orario e fa perdere 
         # le reservations con esattamente passati i 14 giorni
@@ -270,7 +271,7 @@ def send_notifications():
         send_email('notifica di quarantena', notification.message, [user.email])
 
     return count
-
+'''
 
 def send_email(subject, body, recv):
     """Background task to send an email with Flask-Mail."""

@@ -1,11 +1,13 @@
 from flask import Blueprint, render_template, redirect
-from monolith.database import db, Restaurant, Like, Notification, User
+from monolith.database import db, Notification, User
 from monolith.auth import current_user
 import datetime
 from datetime import timedelta
+import requests
 
 home = Blueprint('home', __name__)
 
+RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
 
 @home.route('/')
 def index():
@@ -60,9 +62,11 @@ def index():
 
 
         if current_user.role == 'owner':
-            restaurants = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id)
-            notifications = db.session.query(Notification).filter(Notification.user_id == current_user.id).all()
-            return render_template("homepage_info.html", notifications=notifications, restaurants=restaurants) 
+
+            reply = requests.get(RESTAURANT_SERVICE+'restaurants?owner_id='+str(current_user.id))
+            reply_json = reply.json()
+
+            return render_template("homepage_info.html", restaurants=reply_json) 
     else:
         return render_template("homepage.html") 
 
