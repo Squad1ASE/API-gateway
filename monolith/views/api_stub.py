@@ -118,7 +118,6 @@ def send_reservation():
                     date='10/10/2020 12:00',#datetime.datetime.strftime("10/10/2020 12:00", "%d/%m/%Y %H:%M"),
                     cancelled=False
                 )
-    #TODO: pass json
     return requests.put("http://127.0.0.1:5000/reservations/users/1", data=json.dumps(temp_dict)) 
 
 import json

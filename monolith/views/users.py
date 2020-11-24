@@ -135,17 +135,26 @@ def reservation_list():
         return make_response(
             render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
             403)
-    reservation_records = requests.get('http://localhost:5100/reservations?user_id=' + str(current_user.id)).json()
-    data_dict=[]
-    for reservation in reservation_records:
-        temp_dict = dict(
-            restaurant_name=db.session.query(Restaurant).filter_by(id = reservation["restaurant_id"]).first().name, #todo endpoint call
-            date=reservation["date"],
-            reservation_id=reservation["id"]
-        )
-        data_dict.append(temp_dict)
+    response = requests.get('http://localhost:5100/reservations?user_id=' + str(current_user.id))
+    if response != 200:
+        if response == 500:
+            return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
+        elif response == 400:
+            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/", 400))
+        else:
+            return make_response(render_template('error.html', message='Error', redirect_url='/', 500))
+    else:
+        reservation_records = response.json()
+        data_dict=[]
+        for reservation in reservation_records:
+            temp_dict = dict(
+                restaurant_name=db.session.query(Restaurant).filter_by(id = reservation["restaurant_id"]).first().name, #todo endpoint call
+                date=reservation["date"],
+                reservation_id=reservation["id"]
+            )
+            data_dict.append(temp_dict)
 
-    return render_template('user_reservations_list.html', reservations=data_dict)
+        return render_template('user_reservations_list.html', reservations=data_dict)
 
 
 @users.route('/users/deletereservation/<reservation_id>')
@@ -175,9 +184,17 @@ def editreservation(reservation_id):
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
-    old_res = requests.get('http://localhost:5100/reservations/'+str(reservation_id)).json()        
+    response = requests.get('http://localhost:5100/reservations/'+str(reservation_id))
+    if response != 200:
+        if response == 404
+            return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+        elif response == 500:
+            return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
+        else:
+            return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list', 500))
+    else: 
+        old_res = response.json()
 
-    if old_res:
         seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 
         for seat in seat_query:
@@ -214,7 +231,14 @@ def editreservation(reservation_id):
                     return make_response(render_template('error.html', message="Reservation changed!", redirect_url="/"), 200)
 
                 else:
-                    return make_response(render_template('error.html', message="Reservation NOT changed!", redirect_url="/"), 200)
+                    if response == 404
+                        return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+                    elif response == 500:
+                        return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
+                    elif response == 400:
+                        return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/users/reservation_list", 400))
+                    else:
+                        return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list', 500))
 
 
             else:
@@ -234,6 +258,4 @@ def editreservation(reservation_id):
             return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
     
  
-    else:
-        return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
 

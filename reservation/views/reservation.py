@@ -42,7 +42,7 @@ def get_reservation(reservation_id):
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
 
-
+'''
 # get all the seat for a reservation
 def get_seats(reservation_id):
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
@@ -50,6 +50,7 @@ def get_seats(reservation_id):
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
     return [seat.serialize() for seat in seats]
+'''
 
 # utility to convert days in number
 def convert_weekday(day):
@@ -78,7 +79,10 @@ def create_reservation():
     date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
     restaurant_id = r['restaurant_id']
     
-    restaurant = get_restaurant(restaurant_id).json()
+    response = get_restaurant(restaurant_id)
+    if (response != 200):
+        connexion.problem(500, 'Internal Server Error', 'Service Restaurant is not available at the moment')
+    restaurant = response.json()
     # check if the day is open this day
     weekday = date.weekday() + 1
     workingdays = restaurant['working_days']#get_workingdays(restaurant_id).json()
@@ -186,7 +190,10 @@ def delete_reservation(reservation_id):
         if reservation.date < now:
             return connexion.problem(403, 'Error', "You can't delete a past reservation")
         
-        restaurant = get_restaurant(reservation.restaurant_id).json()
+        response = get_restaurant(reservation.restaurant_id)
+        if response != 200:
+            return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
+        restaurant = response.json()
 
         tables = restaurant['tables']
         table_name = None
@@ -207,16 +214,20 @@ def delete_reservation(reservation_id):
     return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
 
 def delete_reservations():
-    if 'restaurant_id' in request.args and 'user_id' in request.args:   #todo prenderli dal request body
+    body = request.json
+    if 'restaurant_id' in body and 'user_id' in body:   #todo prenderli dal request body
         return connexion.problem('400', 'Error', 'Too much query arguments')
-    elif 'user_id' in request.args:
+    elif 'user_id' in body:
         user_id = request.args.get('user_id')
         reservations = db_session.query(Reservation).filter(
             Reservation.booker_id == int(user_id),
         ).all()
 
         for reservation in reservations:
-            restaurant = get_restaurant(reservation.restaurant_id).json()
+            response = get_restaurant(reservation.restaurant_id)
+            if response != 200:
+                return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
+            restaurant = response.json()
 
             tables = restaurant['tables']
             table_name = None
@@ -228,9 +239,12 @@ def delete_reservations():
             reservation.cancelled = 'user_deleted' +' '+str(restaurant_owner_id)+' '+str(table_name)
             db_session.commit()
         return "User reservations deleted"
-    elif 'restaurant_id' in request.arg:
+    elif 'restaurant_id' in body:
         restaurant_id = request.args.get('restaurant_id')
-        restaurant_name = get_restaurant_name(restaurant_id).json()
+        response = get_restaurant_name(restaurant_id)
+        if response != 200:
+            return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
+        restaurant_name = response.json()
 
         reservations = db_session.query(Reservation).filter(
             Reservation.restaurant_id == int(restaurant_id),
@@ -264,7 +278,10 @@ def edit_reservation(reservation_id):
         
     if r['places'] != old_res.places: # change table_id only if places changed        
   
-        restaurant = get_restaurant(old_res.restaurant_id).json()
+        response = get_restaurant(old_res.restaurant_id)
+        if response != 200:
+            return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
+        restaurant = response.json()
         avg_time_of_stay = restaurant['avg_time_of_stay']
         all_tables = restaurant['tables']
         tables = []
@@ -335,7 +352,7 @@ def edit_reservation(reservation_id):
 
     return 'Reservation is edited successfully'
 
-def do_contact_tracing():  #todo manca da inviare notifiche per reservation future(da start_date a 14 gg) agli owner_id
+def do_contact_tracing():
 
     body = request.json
     if 'email' not in body:
@@ -370,7 +387,7 @@ def do_contact_tracing():  #todo manca da inviare notifiche per reservation futu
         response = get_restaurant(restaurant_id)
         if response.status_code != 200:
             return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
-        restaurant= response.json
+        restaurant= response.json()
         info=dict(date=date,restaurant_id=restaurant_id,avg_time_of_stay=restaurant['avg_time_of_stay'],owner_id=restaurant['owner_id'],restaurant_name=restaurant['name'])
         user_reservations.append(info)
 
@@ -384,7 +401,7 @@ def do_contact_tracing():  #todo manca da inviare notifiche per reservation futu
 
         timestamp = ur['date'].strftime("%d/%m/%Y, %H:%M")
         notification = {
-            "type": 'reservation_with_positive',
+            "type": 'contact_with_positive',
             "message": 'On ' + timestamp + ' there was a positive in your restaurant "'+ur['restaurant_name']+'"!',
             "user_id": ur['owner_id']
         }
@@ -429,7 +446,6 @@ def do_contact_tracing():  #todo manca da inviare notifiche per reservation futu
             .distinct()
 
         for date,email in users_to_be_notified:
-            #customers_to_be_notified.add(u)
             if email != positive_email:
                 timestamp = date.strftime("%d/%m/%Y, %H:%M")
                 notification = {
@@ -438,6 +454,53 @@ def do_contact_tracing():  #todo manca da inviare notifiche per reservation futu
                     "email": email
                 }
                 notifications.append(notification)
+
+        end_date = start_date + timedelta(days = 14)
+        # get the reservations (14 days from the positive result)
+        future_reservations = db_session.query(Seat)\
+            .join(Reservation, Reservation.id == Seat.reservation_id)\
+            .filter(
+                Seat.guests_email != None
+            )\
+            .filter(
+                Seat.guests_email == positive_email,
+                Reservation.cancelled == None,
+                Reservation.date <= end_date,
+                Reservation.date >= start_date
+            ).with_entities(
+                Reservation.date,
+                Reservation.restaurant_id
+            ).distinct()
+
+        for date,restaurant_id in future_reservations:
+            response = get_restaurant(restaurant_id)
+            if response.status_code != 200:
+                return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
+            restaurant = response.json()
+            timestamp = date.strftime("%d/%m/%Y, %H:%M")
+            message = 'The reservation of ' + timestamp + ' of restaurant "' + restaurant['name'] + '" has a positive among the guests.'
+            #message = message + ' Contact the booker by email "' + seat.guests_email + '" or by phone ' + booker.phone
+            notification = {
+                "type": 'reservation_with_positive',
+                "message": message,
+                "user_id": restaurant['owner_id']
+            }
+            notifications.append(notification)
+
+        res = requests.put('http://127.0.0.1:5000/users/notification', json=json.dumps(notification))
+        if res != 200:
+            return connexion.problem(500, 'Internal Server Error', 'Service user is unavailable at the moment')
+        else:
+            return 200
+
+
+        
+
+
+
+
+
+
 
 
 
