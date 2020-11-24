@@ -215,11 +215,11 @@ def delete_reservation(reservation_id):
 def delete_reservations():
     body = request.json
     if 'restaurant_id' in body and 'user_id' in body:   #todo prenderli dal request body
-        print('too much parameters in body')
+        #print('too much parameters in body')
         return connexion.problem('400', 'Error', 'Too much query arguments')
     elif 'user_id' in body:
         user_id = body['user_id']
-        print('cancel reservations for user ' + str(user_id))
+        #print('cancel reservations for user ' + str(user_id))
         reservations = db_session.query(Reservation).filter(
             Reservation.booker_id == user_id,
         ).all()
@@ -238,12 +238,12 @@ def delete_reservations():
                     break
             restaurant_owner_id = restaurant['owner_id']
             reservation.cancelled = 'user_deleted' +' '+str(restaurant_owner_id)+' '+str(table_name)
-            print('cancel user reservation', reservation.cancelled)
+            #print('cancel user reservation', reservation.cancelled)
             db_session.commit()
         return "User reservations deleted"
     elif 'restaurant_id' in body:
         restaurant_id = body['restaurant_id']
-        print('delete reservations for restaurant', restaurant_id)
+        #print('delete reservations for restaurant', restaurant_id)
         response = get_restaurant_name(restaurant_id)
         if response.status_code != 200:
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
@@ -285,54 +285,98 @@ def edit_reservation(reservation_id):
     if r['places'] <= 0:
         return connexion.problem(400, 'Error', 'You cannot book for less people than your self!')
 
-        
-    if r['places'] != old_res.places: # change table_id only if places changed        
+
+    date_str = r['date'] + ' ' + r['time']
+    date = datetime.datetime.strptime(date_str, "%d/%m/%Y %H:%M")
+
+    if date < datetime.datetime.now():
+        return connexion.problem(400, 'Error', "You can't edit a past reservation")
+
+
+    # change table_id and date only if places and date changed  
+    if date != old_res.date or r['places'] != old_res.places:
+
         response = get_restaurant(old_res.restaurant_id)
         if (response.status_code != 200):
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
         restaurant = response.json()
-        avg_time_of_stay = restaurant['avg_time_of_stay']
-        all_tables = restaurant['tables']
-        tables = []
-        found = False
-        for table in all_tables:
-            if table['capacity'] > r['places']:
-                if table['id'] == old_res.table_id:
-                    found = True
-                    break
+
+        if date != old_res.date:
+            # check if the day is open this day
+            weekday = date.weekday() + 1
+            workingdays = restaurant['working_days']
+            workingday = None
+            for w in workingdays:
+                if convert_weekday(w['day']) == weekday:
+                    workingday = w
+            if workingday is None:
+                return connexion.problem(400, 'Error', 'Restaurant is not open this day!')
+            
+            # check if the restaurant is open this hours
+            time_span = False
+            reservation_time = time.strptime(r['time'], '%H:%M')
+            for shift in workingday['work_shifts']:
+                try:
+                    start = time.strptime(shift[0], '%H:%M')
+                    end = time.strptime(shift[1], '%H:%M')
+                    if reservation_time >= start and reservation_time <= end:
+                        time_span = True
+                        break
+                except Exception as e:
+                    print(e)
+
+            if time_span is False:
+                return connexion.problem(400, 'Error', 'Restaurant is not open at this hour')
+            
+            
+            old_res.date = date  
+            db_session.commit()
+
+        if r['places'] != old_res.places:
+        
+            avg_time_of_stay = restaurant['avg_time_of_stay']
+            all_tables = restaurant['tables']
+            tables = []
+            found = False
+            for table in all_tables:
+                if table['capacity'] > r['places']:
+                    if table['id'] == old_res.table_id:
+                        found = True
+                        break
+                    else:
+                        tables.append(table)
+
+            if len(tables) == 0 and found == False:
+                return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
+
+            elif found == False: 
+                date = old_res.date
+                # check if there is a table for this amount of time
+                start_reservation = date - timedelta(minutes=avg_time_of_stay)
+                end_reservation = date + timedelta(minutes=avg_time_of_stay)         
+                reserved_table_records = db_session.query(Reservation).filter(
+                        Reservation.date >= start_reservation,
+                        Reservation.date <= end_reservation,
+                        Reservation.cancelled == None
+                    ).all()
+                reserved_table_ids = [reservation.table_id for reservation in reserved_table_records]
+                tables.sort(key=lambda x: x['capacity'])
+                table_id_reservation = None
+                for table in tables:
+                    if table['id'] not in reserved_table_ids:
+                        table_id_reservation = table['id']
+                        break
+                if table_id_reservation is None:
+                    #print(table_id_reservation)
+                    return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
+
                 else:
-                    tables.append(table)
+                    old_res.table_id = table_id_reservation
+                    db_session.commit()
 
-        if len(tables) == 0 and found == False:
-            return connexion.problem(400, 'Error', 'There are not tables with this capacity!')
-
-        elif found == False: 
-            date = old_res.date
-            # check if there is a table for this amount of time
-            start_reservation = date - timedelta(minutes=avg_time_of_stay)
-            end_reservation = date + timedelta(minutes=avg_time_of_stay)         
-            reserved_table_records = db_session.query(Reservation).filter(
-                    Reservation.date >= start_reservation,
-                    Reservation.date <= end_reservation,
-                    Reservation.cancelled == None
-                ).all()
-            reserved_table_ids = [reservation.table_id for reservation in reserved_table_records]
-            tables.sort(key=lambda x: x['capacity'])
-            table_id_reservation = None
-            for table in tables:
-                if table['id'] not in reserved_table_ids:
-                    table_id_reservation = table['id']
-                    break
-            if table_id_reservation is None:
-                #print(table_id_reservation)
-                return connexion.problem(400, 'Error', "No table available for this amount of people at this time")
-
-            else:
-                old_res.table_id = table_id_reservation
-                db_session.commit()
-
-        old_res.places = r['places']    
-        db_session.commit()
+            old_res.places = r['places']    
+            db_session.commit()
+    
     # change seats_emails --> remove all the olds and save the news (without booker_email)
 
     old_seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
@@ -365,7 +409,7 @@ def do_contact_tracing():
 
     body = request.json
 
-    print(body)
+    #print(body)
     if 'email' not in body:
         return connexion.problem('400', 'Error', 'You must specify an email')
     if 'start_date' not in body:
@@ -377,7 +421,7 @@ def do_contact_tracing():
 
     # first retrieve the reservations of the last 14 days in which the positive was present
     pre_date = start_date - timedelta(days=14)
-    print(start_date, pre_date)
+    #print(start_date, pre_date)
     positive_reservations = db_session.query(Seat)\
         .join(Reservation, Reservation.id == Seat.reservation_id)\
         .filter(
@@ -397,7 +441,7 @@ def do_contact_tracing():
 
     user_reservations=[]
     for date,restaurant_id in positive_reservations:
-        print(date)
+        #print(date)
         response = get_restaurant(restaurant_id)
         if response.status_code != 200:
             return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
@@ -502,7 +546,7 @@ def do_contact_tracing():
                 "booker_id": booker_id
             }
             notifications.append(notification)
-    print(notifications)
+    #print(notifications)
     res = put_notification(notifications)
     if res.status_code != 200:
         return connexion.problem(500, 'Internal Server Error', 'Service user is unavailable at the moment')

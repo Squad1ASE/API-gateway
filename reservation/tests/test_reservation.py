@@ -20,8 +20,10 @@ from reservation.utilities import (edit_reservation_EP, restaurant_example, conf
                                         get_reservation_EP, get_reservations_EP, create_ERROR_reservation_example, 
                                         create_ERROR2_reservation_example, create_ERROR3_reservation_example,
                                         create_reservation_example, create_ERROR4_reservation_example,
-                                        delete_ERROR_reservations_example, delete_USER_reservations_example,
-                                        contact_tracing_EP, contact_tracing_example)
+                                        delete_USER_reservations_example, edit_ERROR1_reservation_future_example,
+                                        contact_tracing_EP, contact_tracing_example, restaurant_closed_h24_example, 
+                                        reservation_example_closed_restaurant, edit_ERROR4_reservation_closed_restaurant_example,
+                                        delete_ERROR_reservations_example, delete_RESTAURANT_reservations_example)
 
 
 # command : pytest tests -s --cov=reservation --cov-report term-missing
@@ -80,16 +82,20 @@ def test_unit_reservations(mock1, test_app):
     db_session.delete(reservation)
     db_session.commit()
 
-
     #--------------------------------------------------------------------------------------EDIT
-
+    
     tables = tables_example    
     ok_mock = mock.MagicMock()
     type(ok_mock).status_code = mock.PropertyMock(return_value=200)
     ok_mock.json.return_value = restaurant_h24_example
     mock1.return_value = ok_mock
 
-    # creation of a reservation
+    # edit a reservation that is not present    
+    with app.test_request_context(json=edit_reservation_example):
+        assert edit_reservation(1) #connexion:404
+
+
+    # creation of a reservation in the past
     with app.test_request_context(json=reservation_example):
         assert create_reservation()
     reservation = db_session.query(Reservation).first()
@@ -131,6 +137,49 @@ def test_unit_reservations(mock1, test_app):
     assert db_session.query(Seat).filter_by(reservation_id=2, guests_email='userexample1@test.com').first() != None
     assert db_session.query(Seat).filter_by(reservation_id=2, guests_email='test@test.com').first() != None
     assert db_session.query(Seat).filter_by(reservation_id=2, guests_email='test2@test.com').first() != None
+
+    # error with date of the past
+    with app.test_request_context(json=edit_ERROR_reservation_future_example):
+        assert edit_reservation(2)
+
+    # error because places is not >= 1
+    with app.test_request_context(json=edit_ERROR1_reservation_future_example):
+        assert edit_reservation(2)
+
+    #error because there are no tables
+    with app.test_request_context(json=edit_ERROR2_reservation_future_example):
+        assert edit_reservation(2)
+
+    # error because number of emails > number of places
+    with app.test_request_context(json=edit_ERROR3_reservation_future_example):
+        assert edit_reservation(2)
+
+
+    # error in a reservation of a not working day   TODO does not enter in the cases of a not working day
+    with app.test_request_context(json=reservation_example_closed_restaurant):
+        assert create_reservation()
+    reservation = db_session.query(Reservation).filter_by(id=3).first()
+    assert reservation != None
+    with app.test_request_context(json=edit_ERROR4_reservation_closed_restaurant_example):
+        assert edit_reservation(reservation.id)
+
+
+
+    # TODO here does not go in connexion problem______________________________________
+    wrong_mock = mock.MagicMock()
+    type(wrong_mock).status_code = mock.PropertyMock(return_value=500)
+    wrong_mock.json.return_value = restaurant_h24_example
+    mock1.return_value = wrong_mock
+
+    with app.test_request_context(json=edit_reservation_future_example):
+        assert edit_reservation(2)
+
+    # for the testing of wrong working day and wrong time see the tests for the creation
+    #________________________________________________________________________________________
+
+
+
+
     
     #-------------------------------------------------------------------------------PARTICIPANTS
 
@@ -162,8 +211,9 @@ def test_unit_reservations(mock1, test_app):
         assert delete_reservation(2)
     reservations = db_session.query(Reservation).all()
     assert reservations != None
+
+
     #---------------------------------------------------------------------------------------------------
-    """
     ok_mock = mock.MagicMock()
     type(ok_mock).status_code = mock.PropertyMock(return_value=200)
     ok_mock.json.return_value = restaurant_h24_example
@@ -195,17 +245,17 @@ def test_unit_reservations(mock1, test_app):
     wrong_mock.json.return_value = restaurant_h24_example
     mock1.return_value = wrong_mock
 
-    with app.test_request_context(json=delete_RESTAURANT_reservations_example):
-        assert delete_reservations()
+    #with app.test_request_context(json=delete_RESTAURANT_reservations_example):
+    #    assert delete_reservations()
 
     ok_mock = mock.MagicMock()
     type(ok_mock).status_code = mock.PropertyMock(return_value=200)
     ok_mock.json.return_value = restaurant_h24_example
     mock1.return_value = ok_mock
 
-    with app.test_request_context(json=delete_RESTAURANT_reservations_example):
-        assert delete_reservations()
-    """
+    #with app.test_request_context(json=delete_RESTAURANT_reservations_example):
+    #    assert delete_reservations()
+
 
 @patch('reservation.views.reservation.get_restaurant')
 def test_component_reservations(mock1, test_app):
@@ -219,7 +269,7 @@ def test_component_reservations(mock1, test_app):
     app, test_client = test_app
 
     # no changes, since the reservation does not exist
-    assert edit_reservation_EP(test_client, 1, edit_reservation_example).status_code == 404 
+    assert edit_reservation_EP(test_client, 1, edit_reservation_example).status_code == 404
 
     # create reservation now
     assert create_reservation_EP(test_client, reservation_now_example).status_code == 200
@@ -272,7 +322,6 @@ def test_component_reservations(mock1, test_app):
 
     db_session.delete(res)
     db_session.commit()
-        
     
 
 @patch('reservation.views.reservation.get_restaurant')

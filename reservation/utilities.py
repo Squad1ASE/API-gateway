@@ -81,7 +81,9 @@ edit_reservation_example = {
     'seats_email': [
         {'guest_email':'test@test.com'},
         {'guest_email':'test2@test.com'}
-    ]
+    ],
+    'date':'20/11/2020',
+    'time':'12:00'
 }
 
 reservation_future_example = dict(
@@ -99,20 +101,41 @@ edit_reservation_future_example = {
     'seats_email': [
         {'guest_email':'test@test.com'},
         {'guest_email':'test2@test.com'}
-    ]
+    ],
+    'date': (datetime.datetime.now() + timedelta(days=1)).strftime('%d/%m/%Y'),
+    'time': datetime.datetime.now().strftime('%H:%M')    
 }
 
-# places must be >= 1
+# edit with date of the past
 edit_ERROR_reservation_future_example = {
+    'places':3,
+    'booker_email':'userexample1@test.com',
+    'seats_email': [
+        {'guest_email':'test@test.com'},
+        {'guest_email':'test2@test.com'}
+    ],
+    'date':'20/11/2020',
+    'time': datetime.datetime.now().strftime('%H:%M')
+    
+}
+
+
+# places must be >= 1
+edit_ERROR1_reservation_future_example = {
     'places':0,
     'booker_email':'userexample1@test.com',
-    'seats_email': []
+    'seats_email': [],
+    'date': (datetime.datetime.now() + timedelta(days=1)).strftime('%d/%m/%Y'),
+    'time': datetime.datetime.now().strftime('%H:%M')    
 }
+
 # there are not tables with this amount of places
 edit_ERROR2_reservation_future_example = {
     'places':25,
     'booker_email':'userexample1@test.com',
-    'seats_email': []
+    'seats_email': [],
+    'date': (datetime.datetime.now() + timedelta(days=1)).strftime('%d/%m/%Y'),
+    'time': datetime.datetime.now().strftime('%H:%M')    
 }
 
 # there are more emails than places
@@ -121,8 +144,12 @@ edit_ERROR3_reservation_future_example = {
     'booker_email':'userexample1@test.com',
     'seats_email': [
         {'guest_email':'test@test.com'}
-    ]
+    ],
+    'date': (datetime.datetime.now() + timedelta(days=1)).strftime('%d/%m/%Y'),
+    'time': datetime.datetime.now().strftime('%H:%M')    
 }
+
+
 
 
 delete_ERROR_reservations_example = {
@@ -130,8 +157,12 @@ delete_ERROR_reservations_example = {
     'user_id':1
 }
 
-delete_ERROR2_reservations_example = {
+delete_USER_reservations_example = {
     'user_id':1
+}
+
+delete_RESTAURANT_reservations_example = {
+    'restaurant_id':1
 }
 
 
@@ -294,6 +325,9 @@ restaurant_h24_example = {
     ]
 }
 
+
+
+
 restaurant_example = {
     "avg_rating": 0.0,
     "avg_time_of_stay": 40,
@@ -416,3 +450,68 @@ create_ERROR4_reservation_example = dict(
     time = '12:00',
     places = 5
 )
+
+
+restaurant_closed_h24_example = {
+    "avg_rating": 0.0,
+    "avg_time_of_stay": 40,
+    "capacity": 5,
+    "cuisine_type": [
+        "italian",
+        "traditional"
+    ],
+    "dishes": [
+        {
+            "id": 1,
+            "ingredients": "tomato,mozzarella",
+            "name": "pizza",
+            "price": 4.5,
+            "restaurant_id": 3
+        },
+        {
+            "id": 2,
+            "ingredients": "pasta,tomato",
+            "name": "pasta",
+            "price": 6.5,
+            "restaurant_id": 3
+        }
+    ],
+    "id": 3,
+    "lat": 42.42,
+    "likes": 0,
+    "lon": 42.42,
+    "name": "My Pizza Restaurant",
+    "owner_id": 123,
+    "phone": "050123456",
+    "prec_measures": "Adopted the measures envisaged by the DPCM 'X'",
+    "tables": [
+        {
+            "capacity": 5,
+            "id": 1,
+            "name": "yellow",
+            "restaurant_id": 3
+        }
+    ],
+    "tot_reviews": 0,
+    "working_days": []
+}
+
+reservation_example_closed_restaurant = dict(
+    booker_id = 1,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 3,
+    date = '20/11/2020',
+    time = '12:00',
+    places = 2
+)
+
+
+edit_ERROR4_reservation_closed_restaurant_example = {
+    'places':2,
+    'booker_email':'userexample1@test.com',
+    'seats_email': [
+        {'guest_email':'test@test.com'}
+    ],
+    'date': (datetime.datetime.now() + timedelta(days=1)).strftime('%d/%m/%Y'),
+    'time': datetime.datetime.now().strftime('%H:%M')    
+}

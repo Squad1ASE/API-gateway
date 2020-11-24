@@ -490,6 +490,8 @@ components:
       - places
       - seats_email
       - booker_email
+      - date
+      - time
       type: object
       properties:
         places:
@@ -506,4 +508,13 @@ components:
           minimum: 1
           writeOnly: true
           example: 'test@test.com'
-           
+        date:
+          minimum: 1
+          type: string #date?
+          writeOnly: true
+          example: "12/10/2020"
+        time:
+          minimum: 1
+          type: string
+          writeOnly: true
+          example: "12:00"
