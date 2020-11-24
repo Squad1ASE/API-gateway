@@ -16,6 +16,7 @@ from sqlalchemy import or_, and_
 
 reservations = Blueprint('reservation', __name__)
 
+
 # get all the reservation
 def get_all_reservations():
     q = db_session.query(Reservation).filter_by(cancelled=None)
@@ -42,15 +43,6 @@ def get_reservation(reservation_id):
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
 
-'''
-# get all the seat for a reservation
-def get_seats(reservation_id):
-    reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
-    if reservation is None:
-        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
-    seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
-    return [seat.serialize() for seat in seats]
-'''
 
 # utility to convert days in number
 def convert_weekday(day):
@@ -88,7 +80,7 @@ def create_reservation():
     workingdays = restaurant['working_days']#get_workingdays(restaurant_id).json()
     workingday = None
     for w in workingdays:
-        #TODO: this line if the day is in string format
+        #this line if the day is in string format
         if convert_weekday(w['day']) == weekday:
         #if w['day'] == weekday:
             workingday = w
@@ -262,8 +254,6 @@ def delete_reservations():
         return connexion.problem('400', 'Error', 'You must specify an ID')
 
     
-
-
 #edit the reservation with specific id
 def edit_reservation(reservation_id):
 

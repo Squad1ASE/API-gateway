@@ -1,20 +1,39 @@
 import requests
 import json
+import os
 
-# get tables
-def get_tables(restaurant_id):
-    return requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/tables')
+from requests import Response
 
-# get working days
-def get_workingdays(restaurant_id):
-    return requests.get('http://127.0.0.1:5000/restaurants/'+str(restaurant_id)+'/workingdays')
+API_GATEWAY_SERVICE = 'http://127.0.0.1:5000/'
+#API_GATEWAY_SERVICE = os.environ['API_GATEWAY_SERVICE']
 
 # get a restaurant example
 def get_restaurant(restaurant_id):
-    return requests.get('http://127.0.0.1:5000/stub/restaurant')
+    reply = object
+    try:
+        reply = requests.get(API_GATEWAY_SERVICE+'stub/restaurant', timeout=10) #todo
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        reply = Response()
+        reply.status_code = 500
+    finally:
+        return reply
 
 def get_restaurant_name(restaurant_id):
-    return requests.get('http:127.0.0.1:5000/stub/restaurant/name')
+    reply = object
+    try:
+        reply=requests.get(API_GATEWAY_SERVICE+'stub/restaurant/name', timeout=10)
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        reply = Response()
+        reply.status_code = 500
+    finally:
+        return reply
 
 def put_notification(notification):
-    return requests.put('http://127.0.0.1:5000/users/notification', json=json.dumps(notification))
+    reply = object
+    try:
+        reply = requests.put(API_GATEWAY_SERVICE+'users/notification', json=json.dumps(notification), timeout=10)
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        reply = Response()
+        reply.status_code = 500
+    finally:
+        return reply
