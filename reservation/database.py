@@ -6,8 +6,8 @@ import datetime
 
 db = declarative_base()
 
-DATABASEURI = os.environ['DATABASE_URI']
-#DATABASEURI = 'sqlite:///reservation.db'
+#DATABASEURI = os.environ['DATABASE_URI']
+DATABASEURI = 'sqlite:///reservation.db'
 db = declarative_base()
 engine = create_engine(DATABASEURI, convert_unicode=True)
 db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False,

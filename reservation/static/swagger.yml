@@ -490,8 +490,8 @@ components:
       - places
       - seats_email
       - booker_email
-      - date
-      - time
+      #- date
+      #- time
       type: object
       properties:
         places:

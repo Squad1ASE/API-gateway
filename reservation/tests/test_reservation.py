@@ -7,6 +7,7 @@ from unittest import mock
 from unittest.mock import patch
 import datetime
 
+from reservation.app import delete_reservations_task, hello
 from reservation.views.reservation import get_restaurant, get_restaurant_name, create_reservation, edit_reservation, put_notification
 from reservation.utilities import (edit_reservation_EP, restaurant_example, confirm_participants_EP, participants_example,
                                         reservation_example, tables_example, restaurant_reservations_EP, 
@@ -206,4 +207,53 @@ def test_contact_tracing(mock1, mock2, test_app):
     res.seats.append(seat)
     db_session.commit()
     assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 200
+
+@patch('reservation.app.put_notification')
+def test_task_celery(mock1, test_app):
+    app, test_client = test_app
+    hello()
+    ok_mock1 = mock.MagicMock()
+    fail_mock1 = mock.MagicMock()
+    type(fail_mock1).status_code = mock.PropertyMock(return_value=500)
+    type(ok_mock1).status_code = mock.PropertyMock(return_value=200)
+    mock1.return_value = fail_mock1
+    reservation = Reservation()
+    reservation.booker_id = 1
+    reservation.restaurant_id = 1
+    reservation.date = datetime.datetime.now()#.strptime('%d/%m/%Y %H:%M')
+    reservation.places = 2
+    reservation.table_id = 1
+    reservation.cancelled = 'reservation_deleted'+' '+str(1)+' '+str('yellow')
+    db_session.add(reservation)
+    db_session.commit()
+    reservation = Reservation()
+    reservation.booker_id = 2
+    reservation.restaurant_id = 1
+    reservation.date = datetime.datetime.now()#.strptime('%d/%m/%Y %H:%M')
+    reservation.places = 2
+    reservation.table_id = 1
+    reservation.cancelled = 'user_deleted' +' '+str(1)+' '+str('yellow')
+    db_session.add(reservation)
+    db_session.commit()
+    reservation = Reservation()
+    reservation.booker_id = 3
+    reservation.restaurant_id = 1
+    reservation.date = datetime.datetime.now()#.strptime('%d/%m/%Y %H:%M')
+    reservation.places = 2
+    reservation.table_id = 1
+    reservation.cancelled = 'restaurant_deleted'+' '+str('restaurant_name')
+    db_session.add(reservation)
+    db_session.commit()
+    # fail case
+    delete_reservations_task()
+    # ok case
+    mock1.return_value = ok_mock1
+    delete_reservations_task()
+    res = db_session.query(Reservation).filter_by(booker_id=1).first()
+    assert res is None
+    res = db_session.query(Reservation).filter_by(booker_id=2).first()
+    assert res is None
+    res = db_session.query(Reservation).filter_by(booker_id=3).first()
+    assert res is None
+
 

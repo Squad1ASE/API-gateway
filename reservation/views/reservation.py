@@ -43,15 +43,6 @@ def get_reservation(reservation_id):
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     return reservation.serialize()
 
-'''
-# get all the seat for a reservation
-def get_seats(reservation_id):
-    reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
-    if reservation is None:
-        return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
-    seats = db_session.query(Seat).filter_by(reservation_id=reservation_id).all()
-    return [seat.serialize() for seat in seats]
-'''
 
 # utility to convert days in number
 def convert_weekday(day):
@@ -217,11 +208,11 @@ def delete_reservation(reservation_id):
 def delete_reservations():
     body = request.json
     if 'restaurant_id' in body and 'user_id' in body:   #todo prenderli dal request body
-        print('too much parameters in body')
+        #print('too much parameters in body')
         return connexion.problem('400', 'Error', 'Too much query arguments')
     elif 'user_id' in body:
         user_id = body['user_id']
-        print('cancel reservations for user ' + str(user_id))
+        #print('cancel reservations for user ' + str(user_id))
         reservations = db_session.query(Reservation).filter(
             Reservation.booker_id == user_id,
         ).all()
@@ -245,7 +236,7 @@ def delete_reservations():
         return "User reservations deleted"
     elif 'restaurant_id' in body:
         restaurant_id = body['restaurant_id']
-        print('delete reservations for restaurant', restaurant_id)
+        #print('delete reservations for restaurant', restaurant_id)
         response = get_restaurant_name(restaurant_id)
         if response.status_code != 200:
             return connexion.problem(500, 'Internal Server Error', 'Service restaurant is unavailable at the moment')
@@ -264,8 +255,6 @@ def delete_reservations():
         return connexion.problem('400', 'Error', 'You must specify an ID')
 
     
-
-
 #edit the reservation with specific id
 def edit_reservation(reservation_id):
 
@@ -367,7 +356,7 @@ def do_contact_tracing():
 
     body = request.json
 
-    print(body)
+    #print(body)
     if 'email' not in body:
         return connexion.problem('400', 'Error', 'You must specify an email')
     if 'start_date' not in body:
@@ -379,7 +368,7 @@ def do_contact_tracing():
 
     # first retrieve the reservations of the last 14 days in which the positive was present
     pre_date = start_date - timedelta(days=14)
-    print(start_date, pre_date)
+    #print(start_date, pre_date)
     positive_reservations = db_session.query(Seat)\
         .join(Reservation, Reservation.id == Seat.reservation_id)\
         .filter(
@@ -399,7 +388,7 @@ def do_contact_tracing():
 
     user_reservations=[]
     for date,restaurant_id in positive_reservations:
-        print(date)
+        #print(date)
         response = get_restaurant(restaurant_id)
         if response.status_code != 200:
             return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
@@ -504,7 +493,7 @@ def do_contact_tracing():
                 "booker_id": booker_id
             }
             notifications.append(notification)
-    print(notifications)
+    #print(notifications)
     res = put_notification(notifications)
     if res.status_code != 200:
         return connexion.problem(500, 'Internal Server Error', 'Service user is unavailable at the moment')
