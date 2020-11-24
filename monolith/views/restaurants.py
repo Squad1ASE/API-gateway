@@ -21,6 +21,7 @@ from sqlalchemy import or_
 import requests
 
 RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+RESERVATIONS_SERVICE = "http://0.0.0.0:5060/"
 REQUEST_TIMEOUT_SECONDS = 1
 
 restaurants = Blueprint('restaurants', __name__)
@@ -68,6 +69,12 @@ def _check_dishes(form_dishes):
         dishes_to_add.append(new_dish)
 
     return dishes_to_add
+
+def _compose_url_get_reservations(user_id, restaurant_id, end):
+    end_date = end.isoformat()
+    url = RESERVATIONS_SERVICE+'reservations'
+    url += '?user_id=' + str(user_id) + '&restaurant_id=' + str(restaurant_id) + '&end=' + str(end_date)
+    return url
 
 
 @restaurants.route('/restaurants/create', methods=['GET'])
@@ -419,7 +426,7 @@ def restaurant_delete(restaurant_id):
         return make_response(render_template('error.html', message="Restaurant successfully deleted", redirect_url="/"), 200)
 
 
-@restaurants.route('/restaurants/search', methods=['GET', 'POST'])
+@restaurants.route('/restaurants/search', methods=['GET'])
 @login_required
 def search_GET():
 
@@ -430,7 +437,7 @@ def search_GET():
     
     return render_template('restaurantsearch.html', form=form)
 
-def search_URL_generator(name=None, lat=None, lon=None):
+def search_URL_generator(name=None, lat=None, lon=None, cuisine_types=[]):
     url = '/restaurants'
     queries = 0 
     if name is not None:
@@ -451,9 +458,15 @@ def search_URL_generator(name=None, lat=None, lon=None):
         else: 
             url += '&lon=' + str(lon)
         queries += 1
+    for cuisine in cuisine_types:
+        if queries == 0:
+            url += '?cuisine_type=' + str(cuisine)
+        else: 
+            url += '&cuisine_type=' + str(cuisine)
+        queries += 1
     return url
 
-@restaurants.route('/restaurants/search', methods=['GET', 'POST'])
+@restaurants.route('/restaurants/search', methods=['POST'])
 @login_required
 def search_POST():
 
@@ -467,47 +480,176 @@ def search_POST():
 
         cuisine_type_list = []
         for cuisine in form.cuisine_type.data:
-            #cuisine_type_list.append(Restaurant.CUISINE_TYPES(cuisine))
             cuisine_type_list.append(cuisine)
 
+        name = None
+        lat = None
+        lon = None
 
-        name = ""
-        lat = ""
-        lon = ""
-
-        if 'name' in request.form:
-            name = request.form.name.data
+        if 'name' in request.form and request.form['name'] != '':
+            name = form.name.data
         if 'lat' in request.form and request.form['lat'] != '':
-            lat = request.form.lat.data
+            lat = form.lat.data
         if 'lon' in request.form and request.form['lon'] != '':
-            lon = request.form.lon.data
+            lon = form.lon.data
             
-        search_url = search_URL_generator(name,lat,lon)
+        if lat is None and lon is not None:
+            form.lat.errors.append("You must specify lat")
+            return render_template('restaurantsearch.html', form=form)
+        if lat is not None and lon is None:
+            form.lon.errors.append("You must specify lon")
+            return render_template('restaurantsearch.html', form=form)
 
-        allrestaurants_list = allrestaurants
+        search_url = search_URL_generator(name,lat,lon,cuisine_type_list)
 
-        if len(cuisine_type_list) >= 1:
+        try:
 
-            allrestaurants_list = []
-            for restaurant in allrestaurants.all():
+            reply = requests.get(RESTAURANT_SERVICE+search_url, timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
 
-                for restaurant_cuisine in restaurant.cuisine_type:
-                        
-                    if(restaurant_cuisine in cuisine_type_list):
-                        allrestaurants_list.append(restaurant)
-                        break
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
-            
-                #allrestaurants = allrestaurants.filter(
-                    #or_(*[Restaurant.cuisine_type == x for x in cuisine_type_list])
-                #)
-            #print(allrestaurants)
-            #print(request.form['cuisine_type'])
-            
+        if reply.status_code != 200:
+            return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
-        return render_template('restaurantsearch.html', form=form, restaurants=allrestaurants_list, restlon=10.4015256, restlat=43.7176589)
+        if len(reply_json) != 0:
+            restlat = reply_json[0]['lat']
+            restlon = reply_json[0]['lon']
+
+        return render_template('restaurantsearch.html', form=form, restaurants=reply_json, restlon=restlon, restlat=restlat)
     
     return render_template('restaurantsearch.html', form=form)
+
+
+@restaurants.route('/restaurants/like/<restaurant_id>')
+@login_required
+def _like(restaurant_id):
+
+    if (current_user.role == 'owner' or current_user.role == 'ha'):
+        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+
+    data = dict(
+        restaurant_id=int(restaurant_id),
+        user_id=current_user.id
+    )
+
+    try:
+        reply = requests.put(RESTAURANT_SERVICE+'likes', json=data, timeout=REQUEST_TIMEOUT_SECONDS)
+        reply_json = reply.json()
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return render_template('error.html', message="Something gone wrong, try again later", redirect_url=RESTAURANT_SERVICE+"restaurants")
+
+    message = ""
+
+    if reply.status_code == 400:
+        message = "An error occured, try again later"
+    else:
+        if reply.status_code != 200:
+            message = reply_json['detail']
+
+    return _restaurants(message)
+
+
+
+
+
+@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['GET'])
+@login_required
+def create_review_GET(restaurant_id):
+    
+    if (current_user.role == 'ha'):
+        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+
+    if current_user.role == 'owner':
+        return make_response(render_template('error.html', message="You are the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
+
+
+    form = ReviewForm()
+
+    # TODO chiamata verso reservation per verificare se user ha fatto almeno una reservation nel passato
+    now = datetime.datetime.now()
+    try:
+        url = _compose_url_get_reservations(user_id=current_user.id, restaurant_id=restaurant_id, end=now)
+        reply = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+        reply_json = reply.json()
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return connexion.problem(500, "Internal server error", "Reservations service not available")
+
+    # if the user has never been to that restaurant
+    reservation_done = False
+    if len(reply_json) == 0:
+        reservation_done = True
+
+
+    try:
+        review_reply = requests.get(RESTAURANT_SERVICE+'reviews?restaurant_id='+str(restaurant_id), timeout=REQUEST_TIMEOUT_SECONDS)
+        review_reply_json = review_reply.json()
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return render_template('error.html', message="Something gone wrong, try again later", redirect_url=RESTAURANT_SERVICE+"restaurants")
+
+    reviews = review_reply_json
+    user_already_reviewed = False
+    for review in reviews:
+        if review['user_id'] == current_user.id:
+            user_already_reviewed = True
+            break
+
+
+    if current_user.role == 'customer' and user_already_reviewed is False and reservation_done is True:
+        return render_template("reviews.html", form=form, reviews=reviews), 200
+
+    else:
+        return render_template("reviews_owner.html", reviews=reviews), 555
+
+
+@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['POST'])
+@login_required
+def create_review(restaurant_id):
+
+    if (current_user.role == 'ha'):
+        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+
+    if current_user.role == 'owner':
+        return make_response(render_template('error.html', message="You are the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
+
+    form = ReviewForm(request.form)
+
+    try:
+        review_reply = requests.get(RESTAURANT_SERVICE+'reviews?restaurant_id='+str(restaurant_id), timeout=REQUEST_TIMEOUT_SECONDS)
+        review_reply_json = review_reply.json()
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return render_template('error.html', message="Something gone wrong, try again later", redirect_url=RESTAURANT_SERVICE+"restaurants")
+
+    if form.validate_on_submit():
+
+        data = dict(
+            user_id=current_user.id,
+            restaurant_id=restaurant_id,
+            rating=request.form['rating'],
+            comment=request.form['comment']
+        )
+
+        try:
+            reply = requests.put(RESTAURANT_SERVICE+'reviews', json=data, timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            return render_template('error.html', message="Something gone wrong, try again later", redirect_url=RESTAURANT_SERVICE+"restaurants")
+
+
+        if reply.status_code == 400:
+            message = "An error occured, try again later"
+        else:
+            if reply.status_code != 200:
+                message = reply_json['detail']
+
+
+    else:
+        return make_response(render_template("reviews.html", form=form,reviews=review_reply_json), 400)
 
 '''
 @restaurants.route('/restaurants/<int:restaurant_id>/reservation', methods=['GET','POST'])
@@ -589,86 +731,9 @@ def reservation(restaurant_id):
     return render_template('reservation.html', form=form)
 
 
-@restaurants.route('/restaurants/like/<restaurant_id>')
-@login_required
-def _like(restaurant_id):
-
-    if (current_user.role == 'owner' or current_user.role == 'ha'):
-        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
-
-    q = Like.query.filter_by(liker_id=current_user.id, restaurant_id=restaurant_id)
-    if q.first() == None:
-        new_like = Like()
-        new_like.liker_id = current_user.id
-        new_like.restaurant_id = restaurant_id
-        db.session.add(new_like)
-        db.session.commit()
-        message = ''
-    else:
-        message = 'You\'ve already liked this place!'
-    return _restaurants(message)
 
 
 
-
-@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['GET', 'POST'])
-@login_required
-def create_review(restaurant_id):
-    
-    if (current_user.role == 'ha'):
-        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
-
-    restaurantRecord = db.session.query(Restaurant).filter_by(id = int(restaurant_id)).all()[0]
-
-    reviews = Review.query.filter_by(restaurant_id=int(restaurant_id)).all()
-
-    # get the first resrvation ordered by date
-    reservation = Reservation.query.order_by(Reservation.date).filter_by(booker_id = int(current_user.id)).first()
-
-    # the user has not been at restaurant yet
-    if (reservation is not None and reservation.date > datetime.datetime.today()):
-        reservation = None
-
-    review = Review.query.filter_by(reviewer_id = int(current_user.id)).filter_by(restaurant_id=restaurant_id).first()
-
-    form = ReviewForm()
-
-    if request.method == 'POST':
-
-        if current_user.role == 'owner':
-            return make_response(render_template('error.html', message="You are the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
-
-        if reservation is None:
-            return make_response(render_template('error.html', message="You have never been at this restaurant! Redirecting to home page", redirect_url="/"), 403)
-
-        if review is not None:
-            return make_response(render_template('error.html', message="You have already reviewed this restaurant! Redirecting to home page", redirect_url="/"), 403)
-
-        if form.validate_on_submit():
-            # add to database
-            new_review = Review()
-            new_review.marked = False
-            new_review.comment = request.form['comment']
-            new_review.rating = request.form['rating']
-            new_review.date = datetime.date.today()
-            new_review.restaurant_id = restaurant_id
-            new_review.reviewer_id = current_user.id
-            db.session.add(new_review)
-            db.session.commit()
-            # after the review don't show the possibility to add another review
-            reviews = Review.query.filter_by(restaurant_id=int(restaurant_id)).all()
-            #return render_template("reviews_owner.html", reviews=reviews), 200
-            return make_response(render_template('error.html', message="Review has been placed", redirect_url="/restaurants/reviews/"+restaurant_id), 200)
-
-        else:
-            return render_template("reviews.html", form=form,reviews=reviews), 400
-
-
-    elif current_user.role == 'customer' and review is None and reservation is not None:
-        return render_template("reviews.html", form=form, reviews=reviews), 200
-
-    else:
-        return render_template("reviews_owner.html", reviews=reviews), 555
 
 @restaurants.route('/restaurants/reservation_list', methods=['GET'])
 @login_required

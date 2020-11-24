@@ -60,7 +60,7 @@ class WorkingDayForm(Form):
     """
     day = f.SelectField(
         'Day', 
-        choices = WEEK_DAYS,
+        choices = [(weekday,weekday) for weekday in WEEK_DAYS],
         validators=[DataRequired()]
     )
     work_shifts = f.StringField('Work shifts', validators=[DataRequired()])
@@ -157,8 +157,8 @@ class RestaurantSearch(FlaskForm):
 
     cuisine_type = f.SelectMultipleField(
         'Cuisine types', 
-        choices = CUISINE_TYPES
-        #coerce = Restaurant.CUISINE_TYPES.coerce
+        choices = [(cuisine,cuisine) for cuisine in CUISINE_TYPES],
+        validators=[DataRequired()]
     )
 
     display = ['name', 'lat', 'lon', 'cuisine_type']
