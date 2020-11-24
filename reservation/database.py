@@ -16,6 +16,7 @@ db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False,
 def init_db():
     try:
         db.metadata.create_all(bind=engine)
+        '''
         q = db_session.query(Reservation).filter(Reservation.id == 1).first()
         if q is None:
             example = Reservation()
@@ -24,7 +25,7 @@ def init_db():
             example.table_id = 1
             example.date = datetime.datetime.strptime("10/10/2020 12:00", "%d/%m/%Y %H:%M")
             #datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
-            example.cancelled = False
+            example.places = 2
             db_session.add(example)
             db_session.commit()
         q = db_session.query(Seat).filter(Seat.id == 1).first()
@@ -33,8 +34,11 @@ def init_db():
             example.reservation_id = 1
             example.guests_email = 'test@test.com'
             example.confirmed = False
+            r = db_session.query(Reservation).filter(Reservation.id == 1).first()
+            r.seats.append(example)
             db_session.add(example)
             db_session.commit()
+        '''
 
     except Exception as e:
         print(e)
@@ -47,7 +51,8 @@ class Reservation(db):
     restaurant_id = Column(Integer)
     table_id = Column(Integer)
     date = Column(DateTime)
-    cancelled = Column(Boolean, default=False)
+    cancelled = Column(String, default=None) #restaurant_deleted/user_deleted/reservation_deleted
+    places = Column(Integer)
     seats = relationship("Seat", cascade="all,delete,delete-orphan", backref="reservation")
 
     def serialize(self):

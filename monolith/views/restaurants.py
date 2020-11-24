@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, redirect, render_template, request, make_response
 from monolith.database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
 from monolith.auth import admin_required, current_user
@@ -165,79 +167,29 @@ def restaurant_sheet(restaurant_id):
 
 
     if request.method == 'POST':
-
+                positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
+                if positive_record is not None:
+                    return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
                 if form.validate_on_submit():
-                    tavoli = db.session.query(Table).filter(Table.restaurant_id == restaurant_id).all()
-                    # 1 transform datetime from form in week day
-                    # 2 search inside working day DB with restaurant ID, check if in the specific day and time the restaurant is open
-                    # 3 check the list of available tables, the search starts from reservation (consider avg_stay_time)
-                    # 4 check in the remaining tables if there is at least one that has more or equals seats then the required
-                    
-                    # if customer is under observation (positive), reservation is denied
 
-                    positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
-                    if positive_record is not None:
-                        return make_response(render_template('restaurantsheet.html', **data_dict, state_message="You are under observation! Reservations are denied"), 222)
-
-                    weekday = form.date.data.weekday() + 1
-                    workingday = db.session.query(WorkingDay).filter(WorkingDay.restaurant_id == int(restaurant_id)).filter(WorkingDay.day == WorkingDay.WEEK_DAYS(weekday)).first()
-                    
-                    if workingday is None:
-                        return make_response(render_template('restaurantsheet.html', **data_dict, state_message="Restaurant isn't open this day"), 333)
-                    
-                    time_span = False
+                    #weekday = form.date.data.weekday() + 1
                     reservation_time = time.strptime(request.form['time'], '%H:%M')
-                    for shift in workingday.work_shifts:
-                        try:
-                            start = time.strptime(shift[0], '%H:%M')
-                            end = time.strptime(shift[1], '%H:%M')
-                            if reservation_time >= start and reservation_time <= end:
-                                time_span = True
-                                break
-                        except:
-                            print("except")
-
-                    if time_span is False:
-                            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="Restaurant isn't open at this hour"), 444)
-
-                    table_records = db.session.query(Table).filter(
-                            Table.restaurant_id == int(restaurant_id),
-                            Table.capacity >= form.guests.data
-                        ).all()
-
-                    if len(table_records) == 0:
-                            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="There are no table with this capacity"), 555)
-
                     reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])
                     reservation_datetime = datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
-
-                    start_reservation = reservation_datetime - timedelta(minutes=restaurantRecord.avg_time_of_stay)
-                    end_reservation = reservation_datetime + timedelta(minutes=restaurantRecord.avg_time_of_stay)
-
-    
-                    reserved_table_records = db.session.query(Reservation).filter(
-                            Reservation.date >= start_reservation,
-                            Reservation.date <= end_reservation,
-                            Reservation.cancelled == False
-                        ).all()
-
-                    #reserved_table_id = reserved_table_records.values('table_id')
-                    reserved_table_id = [reservation.table_id for reservation in reserved_table_records]
-                    table_records.sort(key=lambda x: x.capacity)
-
-                    table_id_reservation = None
-                    for table in table_records:
-                        if table.id not in reserved_table_id:
-                            table_id_reservation = table.id
-                            break
-
-
-                    if table_id_reservation is None:
-                            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="No table available for this amount of people at this time"), 404)
+                    #reservation_datetime_str = str(reservation_datetime_str) + ' ' + str(reservation_time)
+                    temp_dict = dict(
+                        booker_id = current_user.id,
+                        booker_email = current_user.email,
+                        restaurant_id = restaurant_id,
+                        date = str(request.form['date']),
+                        time = str(request.form['time']),
+                        places = form.guests.data
+                    )
+                    #print(temp_dict)
+                    if requests.put('http://127.0.0.1:5100/reservations', json=temp_dict).status_code == 200:
+                        return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
                     else:
-                        return redirect('/restaurants/'+str(restaurant_id)+'/reservation?table_id='+str(table_id_reservation)+'&'+'guests='+str(form.guests.data)+'&'+'date='+reservation_datetime_str)
-                        #return redirect('/restaurants/'+str(restaurant_id)+'/reservation', table_id=table_id_reservation, guests=form.guests.data)
-
+                        return make_response(render_template('error.html', message="Error", redirect_url="/"), 403)
 
     return render_template("restaurantsheet.html", **data_dict)
 
@@ -257,28 +209,13 @@ def restaurant_delete(restaurant_id):
     if restaurant.owner_id != current_user.id:
         return make_response(render_template('error.html', message="You are not the restaurant's owner", redirect_url="/"), 403)
 
-    now = datetime.datetime.now()
-    reservations = db.session.query(Reservation).filter(
-        Reservation.date >= now, 
-        Reservation.restaurant_id == restaurant.id,
-        Reservation.cancelled == False
-        ).all()
-    if len(reservations) > 0:
-        for res in reservations:
-            notification = Notification()
-            notification.email = res.booker.email
-            notification.date = now
-            notification.type_ = Notification.TYPE(2)
-            timestamp = res.date.strftime("%d/%m/%Y, %H:%M")
-            notification.message = 'Your reservation of ' + timestamp + ' at restaurant ' + restaurant.name + ' has been canceled due to the restaurant closing'
-            notification.user_id = res.booker.id
-            db.session.add(notification)
-            res.cancelled = True
-        db.session.commit()
+    #payload = {'restaurant_name':str(restaurant.name)}
+    res = requests.delete('http://localhost:5100/reservations?restaurant_id='+str(restaurant_id)).status_code
+    if res == 200:
+        print('reservations deleted correctly')
+    else:
+        print(str(res))
 
-    reservations = db.session.query(Reservation).filter(Reservation.restaurant_id == restaurant.id).all()
-    for res in reservations:
-        db.session.delete(res)
     likes = db.session.query(Like).filter(Like.restaurant_id == restaurant.id).all()
     for like in likes:
         db.session.delete(like)
@@ -299,6 +236,8 @@ def reservation(restaurant_id):
   
     if (current_user.role == 'owner' or current_user.role == 'ha'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+
+
 
     positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
     if positive_record is not None:
@@ -326,6 +265,8 @@ def reservation(restaurant_id):
     if request.method == 'POST':
 
             if form.validate_on_submit():
+
+
 
                 reservation = Reservation()
                 reservation.booker_id = current_user.id
@@ -603,20 +544,10 @@ def reservation_list():
     if (current_user.role == 'ha' or current_user.role == 'customer'):
         return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
     
-    
     data_dict = []
     restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
-    '''
     for restaurant in restaurants_records:
-        
-        reservation_records = db.session.query(Reservation).filter(
-            Reservation.restaurant_id == restaurant.id, 
-            Reservation.cancelled == False,
-            Reservation.date >= datetime.datetime.now() - timedelta(hours=3)
-        ).all()
-    '''
-    for restaurant in restaurants_records:
-        for reservation in requests.get('http://localhost:5100/reservations/restaurants/'+str(restaurant.id)).json():
+        for reservation in requests.get('http://localhost:5100/reservations?restaurant_id='+str(restaurant.id)).json():
             print(reservation)
             booker = db.session.query(User).filter_by(id=reservation['booker_id']).first()
             seat = reservation['seats']
@@ -633,30 +564,6 @@ def reservation_list():
                 reservation_id = reservation['id']
             )
             data_dict.append(temp_dict)
-
-    '''
-
-        for reservation in reservation_records:
-            booker = db.session.query(User).filter(User.id == reservation.booker_id).first()
-            seat = db.session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
-            table = db.session.query(Table).filter(Table.id == reservation.table_id).first()
-            temp_dict = dict(
-                restaurant_name = restaurant.name,
-                restaurant_id = restaurant.id,
-                date = reservation.date,
-                table_name = table.table_name,
-                number_of_guests = len(seat),
-                booker_fn = booker.firstname,
-                booker_ln = booker.lastname,
-                booker_phone = booker.phone,
-                reservation_id = reservation.id
-            )
-            data_dict.append(temp_dict)
-
-    data_dict = sorted(data_dict, key = lambda i: (i['restaurant_name'],i['date']))
-    '''
-    
-    
                 
     return render_template('restaurant_reservations_list.html', reservations=data_dict)
 
@@ -673,14 +580,8 @@ def confirm_participants(restaurant_id, reservation_id):
         return make_response(render_template('error.html', message="You are not the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
 
     # check if the reservation is in the past or in the future
-
-    reservation = db.session.query(Reservation).filter_by(id=reservation_id).first()
-    if (reservation is None or reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
-        return make_response(render_template('error.html', message="You can't confirm participants for this reservation!", redirect_url="/restaurants/reservation_list"), 403)
-
-    # get the guests in this reservation
-
-    seats = db.session.query(Seat).filter_by(reservation_id=reservation_id).all()
+    res = requests.get('http://127.0.0.1:5100/reservations/'+str(reservation_id)).json()
+    seats = res['seats']
 
     class ConfirmedSeatFormTest(FlaskForm):
         guests = f.FieldList(f.BooleanField())
@@ -691,23 +592,22 @@ def confirm_participants(restaurant_id, reservation_id):
     guests = []
     
     for seat in seats:
-        if seat.confirmed == True:
+        #if seat['confirmed'] == True:
             # in this case the participants are already confirmed by the owner
-            return make_response(render_template('error.html', message="Participants are already confirmed for this reservation", redirect_url="/restaurants/reservation_list"), 403)
-        guests.append(seat.guests_email)
+        #    return make_response(render_template('error.html', message="Participants are already confirmed for this reservation", redirect_url="/restaurants/reservation_list"), 403)
+        guests.append(seat['guests_email'])
 
     if request.method == 'POST':
-        
-        # get all the confirmed participants
+        entrances = []
         for key in request.form:
             if key != 'csrf_token':
                 email = request.form[key]
-                seat = db.session.query(Seat).filter_by(guests_email=email).filter_by(reservation_id=reservation_id).first()
-                seat.confirmed = True
-                db.session.commit()
-
-        #TODO: maybe create an apposite page that lists all confirmed participants
-        return make_response(render_template('error.html', message="Participants confirmed", redirect_url="/"), 200)
-
+                entrances.append(email)
+        if requests.post('http://127.0.0.1:5100/reservations/'+str(reservation_id)+'/entrances', json=entrances).status_code == 200:
+            #TODO: maybe create an apposite page that lists all confirmed participants
+            return make_response(render_template('error.html', message="Participants confirmed", redirect_url="/"), 200)
+        else:
+            return make_response(render_template('error.html', message="Error", redirect_url="/"), 403)
+        
 
     return render_template('restaurant_confirm_participants.html', guests=guests, form=form)
