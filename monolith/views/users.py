@@ -14,6 +14,12 @@ from monolith.views.restaurants import restaurant_delete
 import requests
 import os
 
+import time
+from datetime import date
+from time import mktime
+from datetime import timedelta
+
+
 users = Blueprint('users', __name__)
 
 RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
@@ -196,11 +202,18 @@ def editreservation_post(reservation_id):
         if len(form.data['guest']) + 1 > form.data['places']:
             return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='Too much guests!'), 400)
 
+        time_now = datetime.datetime.now().strftime('%H:%M')
+        if form.data['date'] < datetime.date.today() or (form.data['date']==datetime.date.today() and str(request.form['time'])<=time_now ):
+            return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='You cannot edit a past reservertion'), 400)
+
         d = dict(
             places=form.data['places'],
             seats_email=form.data['guest'],
-            booker_email = current_user.email
+            booker_email = current_user.email,
+            date = str(request.form['date']),
+            time = str(request.form['time'])
         )
+
 
         data = requests.post(RESERVATION_SERVICE+'reservations/'+str(reservation_id), json=d)
         if data.status_code == 200:                
@@ -245,21 +258,24 @@ def editreservation(reservation_id):
             if seat['guests_email'] == current_user.email:
                 seat_query.remove(seat)                 
 
-
         form = EditReservationForm()
-        
-
-
         
         # in the GET we fill all the fields with the old values
         form['places'].data = old_res['places']
+
+        dt_str = old_res['date']
+        dt= datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+        print(dt.date(), dt.time())
+        form['date'].data = dt.date()
+        form['time'].data = dt.time()
         if len(seat_query) > 0:
             for idx, seat in enumerate(seat_query):    
                 email_form = EmailForm()
                 form.guest.append_entry(email_form)       
                 form.guest[idx].guest_email.data = seat['guests_email']
 
-        return render_template('user_reservation_edit_NUOVA.html', form=form)
+        return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
+
     
  
 
