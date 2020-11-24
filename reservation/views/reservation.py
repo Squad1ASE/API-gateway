@@ -162,7 +162,6 @@ def confirm_participants(reservation_id):
     # get the reservation
     reservation = db_session.query(Reservation).filter_by(id=reservation_id).first()
     if reservation is None:
-        #return Response('There is not a reservation with this ID', status=404)
         return connexion.problem(404, 'Not found', 'There is not a reservation with this ID')
     if (reservation is None or reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
         return connexion.problem(403, 'Error', 'The reservation is too old or in the future')

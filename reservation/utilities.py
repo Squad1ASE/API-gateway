@@ -125,6 +125,47 @@ edit_ERROR3_reservation_future_example = {
 }
 
 
+delete_ERROR_reservations_example = {
+    'restaurant_id':1,
+    'user_id':1
+}
+
+delete_ERROR2_reservations_example = {
+    'user_id':1
+}
+
+
+
+'''
+workingdays_example = [{
+        "day": "friday",
+        "restaurant_id": 1,
+        "work_shifts": [
+            [
+                "12:00",
+                "15:00"
+            ],
+            [
+                "19:00",
+                "23:00"
+            ]
+        ]
+    },
+    {
+        "day": "saturday",
+        "restaurant_id": 1,
+        "work_shifts": [
+            [
+                "12:00",
+                "15:00"
+            ],
+            [
+                "19:00",
+                "23:00"
+            ]
+        ]
+}]
+'''
 tables_example = [{
     'capacity':5,
     'id':1,
@@ -325,3 +366,53 @@ restaurant_example = {
         }
     ]
 }
+
+# create a reservation on a not working day
+create_ERROR_reservation_example = dict(
+    booker_id = 1,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 1,
+    date = '22/11/2020',
+    time = '12:00',
+    places = 2
+)
+
+# create a reservation on a not working time
+create_ERROR2_reservation_example = dict(
+    booker_id = 1,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 1,
+    date = '20/11/2020',
+    time = '10:00',
+    places = 2
+)
+
+# create a reservation but there are not tables with the wanted capacity
+create_ERROR3_reservation_example = dict(
+    booker_id = 1,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 1,
+    date = '20/11/2020',
+    time = '12:00',
+    places = 25
+)
+
+# create a reservation and occupy all the tables
+create_reservation_example = dict(
+    booker_id = 1,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 1,
+    date = '20/11/2020',
+    time = '12:00',
+    places = 5
+)
+
+# create a reservation but there are no more tables
+create_ERROR4_reservation_example = dict(
+    booker_id = 1,
+    booker_email = 'userexample1@test.com',
+    restaurant_id = 1,
+    date = '20/11/2020',
+    time = '12:00',
+    places = 5
+)
