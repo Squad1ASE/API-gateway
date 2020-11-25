@@ -3,7 +3,7 @@ from flask_login import (current_user, login_user, logout_user,
                          login_required)
 
 from monolith.database import db, User
-from monolith.forms import LoginForm
+from forms import LoginForm
 import requests
 from datetime import datetime
 
@@ -27,6 +27,7 @@ def login():
                 password=form.data['password']
             )
 
+            # TODO mettere controllo TIMEOUT 
             reply = requests.post(USER_SERVICE+'login', json=login_dict)
             reply_json = reply.json()
 

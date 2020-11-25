@@ -14,7 +14,7 @@ from flask_mail import Message, Mail
 
 
         
-RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
 
 def create_app():
     app = Flask(__name__)
