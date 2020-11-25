@@ -58,16 +58,17 @@
       {# OWNER #}
       {% if current_user.role == 'owner' %}
         
-        <h2><a href='/create_restaurant'>Insert a new restaurant</a></h2>
+        <h2><a href='/restaurants/create'>Insert a new restaurant</a></h2>
         <br>
         <a href="/restaurants/reservation_list">Reservations list</a>
         <br>
         <h2>Restaurants list: </h2>
+            {{ message }}
           <ul>
             {% for restaurant in restaurants: %}
             <li>
             {{restaurant.name}}     
-            <a href="/edit_restaurant_informations/{{restaurant.id}}">Edit</a> 
+            <a href="/edit_restaurant/{{restaurant.id}}">Edit</a> 
             <a href="/restaurants/delete/{{restaurant.id}}">Delete</a>
             </li>
             {% endfor %}

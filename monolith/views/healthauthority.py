@@ -1,5 +1,5 @@
 from flask import Blueprint, redirect, render_template, request, make_response, url_for
-from monolith.database import db, User, Quarantine, Seat, Reservation, Notification, Restaurant, Table
+from monolith.database import db, User, Quarantine, Notification
 from monolith.auth import admin_required
 from monolith.forms import GetPatientInformationsForm
 from flask_login import (current_user, login_user, logout_user,

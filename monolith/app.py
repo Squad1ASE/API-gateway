@@ -1,14 +1,10 @@
 import os
 from flask import Flask
-from monolith.database import ( db, User, Restaurant, Table, WorkingDay,
-                                Reservation, Like, Seat, Review, 
-                                Dish, Quarantine, Notification )
+from monolith.database import ( db, User, Quarantine, Notification )
 from monolith.views import blueprints
 from monolith.auth import login_manager
 from monolith.utilities import ( insert_ha, create_user_EP, user_login_EP, 
-                                user_logout_EP, create_restaurant_EP, customers_example, 
-                                restaurant_example, admin_example, health_authority_example, 
-                                restaurant_owner_example )
+                                user_logout_EP, customers_example, admin_example, health_authority_example)
 import datetime
 from datetime import timedelta, date
 
@@ -19,6 +15,8 @@ from flask_mail import Message, Mail
 mail = None
 
         
+RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+
 def create_app():
     app = Flask(__name__)
     app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
@@ -134,6 +132,7 @@ def make_celery(app):
 
     }
 
+    '''
     class ContextTask(celery.Task):
         def __call__(self, *args, **kwargs):
             with app.app_context():
@@ -141,6 +140,7 @@ def make_celery(app):
 
     celery.Task = ContextTask
     return celery
+    '''
 
 app = create_app()
 #celery = make_celery(app)
@@ -255,7 +255,7 @@ def send_notifications():
         send_email('notifica di quarantena', notification.message, [user.email])
 
     return count
-
+'''
 
 def send_email(subject, body, recv):
     """Background task to send an email with Flask-Mail."""

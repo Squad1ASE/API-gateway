@@ -2,8 +2,9 @@ from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form, BooleanField
 from wtforms.validators import DataRequired, Length, Email, NumberRange, ValidationError
-from monolith.database import Restaurant, WorkingDay
 import ast
+from monolith.static.enum import CUISINE_TYPES, WEEK_DAYS
+import time
 
 
 class LoginForm(FlaskForm):
@@ -59,23 +60,49 @@ class WorkingDayForm(Form):
     """
     day = f.SelectField(
         'Day', 
-        choices = WorkingDay.WEEK_DAYS.choices(),
-        coerce = WorkingDay.WEEK_DAYS.coerce, 
+        choices = [(weekday,weekday) for weekday in WEEK_DAYS],
         validators=[DataRequired()]
     )
     work_shifts = f.StringField('Work shifts', validators=[DataRequired()])
 
     def validate_work_shifts(form, field):
+        str_shifts = '[' + field.data + ']'
+        work_shifts = list(ast.literal_eval(str_shifts))
+        if (work_shifts is None): raise ValueError("work_shifts is None")
+        if not isinstance(work_shifts, list): raise ValueError("work_shifts is not a list")
+        if (len(work_shifts) == 0): raise ValueError("work_shifts is empty")
+        if (len(work_shifts) > 2): raise ValueError("work_shifts can contains at most two shifts")
+        last = None
+        for shift in work_shifts:
+            if not isinstance(shift, tuple): raise ValueError("work_shifts element is not a list")
+            if (len(shift) != 2): raise ValueError("work_shifts element is not a pair")
+            for hour_to_check in shift:
+                try:
+                    hour = time.strptime(hour_to_check, '%H:%M')
+                    if last is None:
+                        last = hour
+                    else:
+                        if last >= hour:
+                            raise ValueError("work_shifts contains non-incremental times")
+                        last = hour
+                except:
+                    raise ValueError("incorrect format for hour")
+        return work_shifts
+    '''
+    def validate_work_shifts(form, field):
         try:
             str_shifts = '[' + field.data + ']'
             shifts = list(ast.literal_eval(str_shifts))
-            trial_working_day = WorkingDay()
-            trial_working_day.work_shifts = shifts
+            for shift in shifts:
+                if not isinstance(shift, tuple) or len(shift) != 2:
+                    raise Exception()
+                
         except:
             raise ValidationError("expected format: ('HH:MM','HH:MM'),('HH:MM','HH:MM')")
-
+    '''
 
 class RestaurantForm(FlaskForm):
+
     name = f.StringField('Name', validators=[DataRequired()])
     lat = f.FloatField('Latitude', validators=[DataRequired()])
     lon = f.FloatField('Longitude', validators=[DataRequired()])
@@ -85,8 +112,7 @@ class RestaurantForm(FlaskForm):
 
     cuisine_type = f.SelectMultipleField(
         'Cuisine types', 
-        choices = Restaurant.CUISINE_TYPES.choices(),
-        coerce = Restaurant.CUISINE_TYPES.coerce, 
+        choices = [(cuisine,cuisine) for cuisine in CUISINE_TYPES],
         validators=[DataRequired()]
     )
     prec_measures = f.TextAreaField('Precautionary measures',validators=[DataRequired()])
@@ -131,8 +157,8 @@ class RestaurantSearch(FlaskForm):
 
     cuisine_type = f.SelectMultipleField(
         'Cuisine types', 
-        choices = Restaurant.CUISINE_TYPES.choices(),
-        coerce = Restaurant.CUISINE_TYPES.coerce
+        choices = [(cuisine,cuisine) for cuisine in CUISINE_TYPES],
+        validators=[DataRequired()]
     )
 
     display = ['name', 'lat', 'lon', 'cuisine_type']
