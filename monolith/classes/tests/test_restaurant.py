@@ -1,6 +1,6 @@
-from monolith.database import db, User, Restaurant, WorkingDay, Table, Dish, Reservation, Quarantine, Like, Review, Seat, Notification
-from monolith.classes.tests.conftest import test_app
-from monolith.utilities import (create_user_EP, user_login_EP, user_logout_EP, 
+from database import db, User, Restaurant, WorkingDay, Table, Dish, Reservation, Quarantine, Like, Review, Seat, Notification
+from classes.tests.conftest import test_app
+from utilities import (create_user_EP, user_login_EP, user_logout_EP, 
                                 create_restaurant_EP, customers_example, restaurant_example, restaurant_owner_example,
                                 reservation_times_example, reservation_guests_number_example, restaurant_h24_example,
                                 reservation_guests_email_example, restaurant_reservation_EP, 

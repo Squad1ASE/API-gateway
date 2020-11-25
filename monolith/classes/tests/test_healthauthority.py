@@ -1,6 +1,6 @@
-from monolith.database import db, User, Quarantine, Restaurant, Notification, Reservation, Seat
-from monolith.classes.tests.conftest import test_app
-from monolith.utilities import restaurant_h24_example, user_logout_EP, restaurant_reservation_POST_EP, restaurant_reservation_EP, create_restaurant_EP, create_user_EP, user_login_EP, insert_ha, customers_example, restaurant_example, restaurant_owner_example, health_authority_example,  mark_patient_as_positive
+from database import db, User, Quarantine, Restaurant, Notification, Reservation, Seat
+from classes.tests.conftest import test_app
+from utilities import restaurant_h24_example, user_logout_EP, restaurant_reservation_POST_EP, restaurant_reservation_EP, create_restaurant_EP, create_user_EP, user_login_EP, insert_ha, customers_example, restaurant_example, restaurant_owner_example, health_authority_example,  mark_patient_as_positive
 import datetime
 from sqlalchemy import exc
 from datetime import timedelta

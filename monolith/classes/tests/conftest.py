@@ -1,5 +1,5 @@
 import pytest
-from database import db
+from database import db_session
 from app import create_app
 import tempfile
 import os

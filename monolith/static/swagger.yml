@@ -1,0 +1,52 @@
+openapi: 3.0.1
+info:
+  title: Service API Gateway
+  description: API Gateway of GoOutSafe application
+  version: "0.1"
+servers:
+- url: /
+paths:     
+  /login:
+    get:
+        tags:
+        - Login
+        summary: Get form to login
+        operationId: views.auth.login_get
+        responses:
+          200:
+            description: Login form page
+            content:
+              text/html:
+                schema:
+                  type: string
+    post:
+        tags:
+        - Login
+        summary: Send login form
+        operationId: views.auth.login_post
+        responses:
+          200:
+            description: Login successfully
+            content:
+              text/html:
+                schema:
+                  type: string
+          400:
+            description: Login failed
+            content:
+              text/html:
+                schema:
+                  type: string
+  /logout:
+    get:
+        tags:
+        - Login
+        summary: Logout current user
+        operationId: views.auth.logout
+        responses:
+          200:
+            description: Logout successfully
+            content:
+              text/html:
+                schema:
+                  type: string

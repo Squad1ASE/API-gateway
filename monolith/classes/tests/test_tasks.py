@@ -1,10 +1,10 @@
 import time
 import unittest
-from monolith.app import ( mail, compute_review_count, send_notifications, 
+from app import ( mail, compute_review_count, send_notifications, 
                             unmark_negative_users, send_email, 
                             get_mail_object, compute_like_count )
-from monolith.classes.tests.conftest import test_app
-from monolith.database import User, db, Restaurant, Like, Review, Notification, Quarantine
+from classes.tests.conftest import test_app
+from database import User, db, Restaurant, Like, Review, Notification, Quarantine
 
 from datetime import datetime, timedelta
 import datetime as dt

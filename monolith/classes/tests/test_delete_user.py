@@ -1,18 +1,15 @@
-from monolith.database import (db, User, Quarantine, Notification,
-                                Restaurant, WorkingDay,
-                                Reservation, Seat, 
-                                Like, Review )
+from database import db_session
 
-from monolith.classes.tests.conftest import test_app
-from monolith.utilities import (create_user_EP, user_login_EP, user_logout_EP,
+from classes.tests.conftest import test_app
+from utilities import (create_user_EP, user_login_EP, user_logout_EP,
                                 create_restaurant_EP, restaurant_reservation_EP, 
                                 restaurant_reservation_POST_EP, create_review_EP,
                                 insert_ha, mark_patient_as_positive, restaurant_h24_example)
-from monolith.app import del_inactive_users
+from app import del_inactive_users
 import json
 from sqlalchemy import exc
 import datetime
-from monolith.app import del_inactive_users
+from app import del_inactive_users
 
 
 '''

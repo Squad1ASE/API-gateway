@@ -1,4 +1,4 @@
-from monolith.database import User
+from database import User
 import datetime
 
 

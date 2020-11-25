@@ -1,11 +1,11 @@
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import ( db, User, Quarantine, Notification)
-from monolith.auth import admin_required
+from database import db_session,  User
+from auth import admin_required
 from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form
 from wtforms.validators import DataRequired, Length, Email, NumberRange
-from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
+from forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
@@ -15,7 +15,7 @@ from datetime import date
 from time import mktime
 from datetime import timedelta
 import json
-from monolith.json_converter import user_to_json
+from json_converter import user_to_json
 import requests
 
 users = Blueprint('users', __name__)
@@ -26,7 +26,8 @@ RESTAURANT_SERVICE = 'http://127.0.0.1:5070/'
 #RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
 REQUEST_TIMEOUT_SECONDS = 2
 
-@users.route('/users')
+
+#@users.route('/users')
 @login_required
 def _users():
     if (current_user.role != 'admin'):
@@ -45,7 +46,7 @@ def _users():
         return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
 
-@users.route('/users/create', methods=['GET'])
+#@users.route('/users/create', methods=['GET'])
 def create_user_GET():
     if current_user is not None and hasattr(current_user, 'id'):
         return make_response(
@@ -56,7 +57,8 @@ def create_user_GET():
 
     return render_template('create_user.html', form=form)
 
-@users.route('/users/create', methods=['POST'])
+
+#@users.route('/users/create', methods=['POST'])
 def create_user_POST():
 
     if current_user is not None and hasattr(current_user, 'id'):
@@ -84,7 +86,7 @@ def create_user_POST():
         return make_response(render_template('create_user.html', form=form), 400)
 
 
-@users.route('/users/edit', methods=['GET'])
+#@users.route('/users/edit', methods=['GET'])
 @login_required
 def edit_user_GET():
 
@@ -93,7 +95,8 @@ def edit_user_GET():
     form.phone.data = current_user.phone
     return render_template('edit_user.html', form=form, email=current_user.email)
 
-@users.route('/users/edit', methods=['POST'])
+
+#@users.route('/users/edit', methods=['POST'])
 @login_required
 def edit_user_POST():
 
@@ -134,7 +137,7 @@ def edit_user_POST():
         return make_response(render_template('edit_user.html', form=form, email=current_user.email), 400)
 
 
-@users.route('/users/delete', methods=['GET'])
+#@users.route('/users/delete', methods=['GET'])
 @login_required
 def delete_user():
 
@@ -153,28 +156,30 @@ def delete_user():
         return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
 
-@users.route('/users/reservation', methods=['GET'])
+#@users.route('/users/reservation', methods=['GET'])
 @login_required
 def reservation_list():
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(
             render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
             403)
-    response = requests.get(RESERVATION_SERVICE+'reservations?user_id=' + str(current_user.id))
+
+    response, response_json = None, None
+    try:
+        response = requests.get(RESERVATION_SERVICE+'reservations?user_id=' + str(current_user.id))
+        response_json = response.json()
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
+
     if response.status_code != 200:
-        if response.status_code == 500:
-            return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
-        elif response.status_code == 400:
-            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/"), 400)
-        else:
-            return make_response(render_template('error.html', message='Error', redirect_url='/'), 500)
+        return make_response(render_template('error.html', message=response_json['detail'], redirect_url="/"), response.status_code)
     else:
         reservation_records = response.json()
         data_dict=[]
         for reservation in reservation_records:
 
             try:
-                reply = requests.get(RESTAURANT_SERVICE+'/restaurants/'+str(reservation['restaurant_id']), timeout=REQUEST_TIMEOUT_SECONDS)
+                reply = requests.get(RESTAURANT_SERVICE+'restaurants/'+str(reservation['restaurant_id']), timeout=REQUEST_TIMEOUT_SECONDS)
                 reply_json = reply.json()
 
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -192,7 +197,7 @@ def reservation_list():
         return render_template('user_reservations_list.html', reservations=data_dict)
 
 
-@users.route('/users/deletereservation/<reservation_id>')
+#@users.route('/users/deletereservation/<reservation_id>')
 @login_required
 def deletereservation(reservation_id):
     
@@ -225,7 +230,8 @@ def deletereservation(reservation_id):
     else:
         return make_response(render_template('error.html', message=old_res['detail'], redirect_url="/users/reservation_list"), resp.status_code)
 
-@users.route('/users/editreservation/<reservation_id>', methods=['POST'])
+
+#@users.route('/users/editreservation/<reservation_id>', methods=['POST'])
 def editreservation_post(reservation_id):
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
@@ -274,7 +280,8 @@ def editreservation_post(reservation_id):
         #invalid form
         return make_response(render_template('user_reservation_edit_NUOVA.html', form=form), 400)
 
-@users.route('/users/editreservation/<reservation_id>', methods=['GET'])
+
+#@users.route('/users/editreservation/<reservation_id>', methods=['GET'])
 @login_required
 def editreservation(reservation_id):
 

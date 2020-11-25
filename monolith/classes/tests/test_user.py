@@ -1,8 +1,8 @@
-from monolith.database import db, User
-from monolith.classes.tests.conftest import test_app
-from monolith.utilities import create_user_EP, user_login_EP, user_logout_EP, edit_user_EP, customers_example, reservation_guests_email_example, reservation_guests_number_example
-from monolith.utilities import reservation_dates_example, reservation_times_example, insert_ha
-from monolith.utilities import restaurant_reservation_POST_EP, restaurant_owner_example, restaurant_example, create_restaurant_EP, insert_admin
+from database import db, User
+from classes.tests.conftest import test_app
+from utilities import create_user_EP, user_login_EP, user_logout_EP, edit_user_EP, customers_example, reservation_guests_email_example, reservation_guests_number_example
+from utilities import reservation_dates_example, reservation_times_example, insert_ha
+from utilities import restaurant_reservation_POST_EP, restaurant_owner_example, restaurant_example, create_restaurant_EP, insert_admin
 import datetime
 from sqlalchemy import exc
 

@@ -1,14 +1,14 @@
 import json
 
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import db, User, Quarantine, Notification
-from monolith.auth import admin_required, current_user
+from database import db_session, User
+from auth import admin_required, current_user
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
-from monolith.forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
+from forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
                             SubReservationPeopleEmail, ReservationRequest, RestaurantSearch, 
                             EditRestaurantForm, ReviewForm )
-from monolith.views import auth
+from views import auth
 import datetime
 from flask_wtf import FlaskForm
 import wtforms as f
@@ -81,7 +81,7 @@ def _compose_url_get_reservations(user_id, restaurant_id, end):
     return url
 
 
-@restaurants.route('/restaurants/create', methods=['GET'])
+#@restaurants.route('/restaurants/create', methods=['GET'])
 def create_restaurant_GET():
     if current_user is not None and hasattr(current_user, 'id'):
         if (current_user.role == 'customer' or current_user.role == 'ha'):
@@ -94,7 +94,8 @@ def create_restaurant_GET():
     else:
         return make_response(render_template('error.html', message="You are not logged! Redirecting to login page", redirect_url="/login"), 403)
 
-@restaurants.route('/restaurants/create', methods=['POST'])
+
+#@restaurants.route('/restaurants/create', methods=['POST'])
 def create_restaurant_POST():
     if current_user is not None and hasattr(current_user, 'id'):
         if (current_user.role == 'customer' or current_user.role == 'ha'):
@@ -170,7 +171,8 @@ def create_restaurant_POST():
     else:
         return make_response(render_template('error.html', message="You are not logged! Redirecting to login page", redirect_url="/login"), 403)
 
-@restaurants.route('/edit_restaurant/<restaurant_id>', methods=['GET'])
+
+#@restaurants.route('/edit_restaurant/<restaurant_id>', methods=['GET'])
 def restaurant_edit_GET(restaurant_id):    
     if current_user is not None and hasattr(current_user, 'id'):
 
@@ -214,7 +216,7 @@ def restaurant_edit_GET(restaurant_id):
         ), 403)
 
 
-@restaurants.route('/edit_restaurant/<restaurant_id>', methods=['POST'])
+#@restaurants.route('/edit_restaurant/<restaurant_id>', methods=['POST'])
 def restaurant_edit_POST(restaurant_id):  
     if current_user is not None and hasattr(current_user, 'id'):
 
@@ -261,7 +263,7 @@ def restaurant_edit_POST(restaurant_id):
         ), 403)
 
 
-@restaurants.route('/restaurants')
+#@restaurants.route('/restaurants')
 @login_required
 def _restaurants(message=''):
 
@@ -289,7 +291,8 @@ def _restaurants(message=''):
 
     return render_template("restaurants.html", message=message, restaurants=allrestaurants, base_url="http://127.0.0.1:5000/restaurants")
 
-@restaurants.route('/restaurants/<int:restaurant_id>', methods=['POST'])
+
+#@restaurants.route('/restaurants/<int:restaurant_id>', methods=['POST'])
 def create_reservation(restaurant_id):
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
@@ -326,7 +329,8 @@ def create_reservation(restaurant_id):
             else:
                 return make_response(render_template('error.html', message="Error", redirect_url="/"), 500)
 
-@restaurants.route('/restaurants/<int:restaurant_id>', methods=['GET'])
+
+#@restaurants.route('/restaurants/<int:restaurant_id>', methods=['GET'])
 @login_required
 def restaurant_sheet_GET(restaurant_id):
 
@@ -363,7 +367,7 @@ def restaurant_sheet_GET(restaurant_id):
     return render_template("restaurantsheet.html", **data_dict)
                    
 
-@restaurants.route('/restaurants/delete/<int:restaurant_id>', methods=['GET'])
+#@restaurants.route('/restaurants/delete/<int:restaurant_id>', methods=['GET'])
 @login_required
 def restaurant_delete(restaurant_id):
 
@@ -384,7 +388,7 @@ def restaurant_delete(restaurant_id):
         return make_response(render_template('error.html', message="Restaurant successfully deleted", redirect_url="/"), 200)
 
 
-@restaurants.route('/restaurants/search', methods=['GET'])
+#@restaurants.route('/restaurants/search', methods=['GET'])
 @login_required
 def search_GET():
 
@@ -394,6 +398,7 @@ def search_GET():
     form = RestaurantSearch()
     
     return render_template('restaurantsearch.html', form=form)
+
 
 def search_URL_generator(name=None, lat=None, lon=None, cuisine_types=[]):
     url = '/restaurants'
@@ -424,7 +429,7 @@ def search_URL_generator(name=None, lat=None, lon=None, cuisine_types=[]):
         queries += 1
     return url
 
-@restaurants.route('/restaurants/search', methods=['POST'])
+#@restaurants.route('/restaurants/search', methods=['POST'])
 @login_required
 def search_POST():
 
@@ -482,7 +487,7 @@ def search_POST():
     return render_template('restaurantsearch.html', form=form)
 
 
-@restaurants.route('/restaurants/like/<restaurant_id>')
+#@restaurants.route('/restaurants/like/<restaurant_id>')
 @login_required
 def _like(restaurant_id):
 
@@ -512,7 +517,7 @@ def _like(restaurant_id):
     return _restaurants(message)
 
 
-@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['GET'])
+#@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['GET'])
 @login_required
 def create_review_GET(restaurant_id):
     
@@ -562,7 +567,7 @@ def create_review_GET(restaurant_id):
         return render_template("reviews_owner.html", reviews=reviews), 555
 
 
-@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['POST'])
+#@restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['POST'])
 @login_required
 def create_review(restaurant_id):
 
@@ -609,7 +614,7 @@ def create_review(restaurant_id):
         return make_response(render_template("reviews.html", form=form,reviews=review_reply_json), 400)
 
 
-@restaurants.route('/restaurants/reservation_list', methods=['GET'])
+#@restaurants.route('/restaurants/reservation_list', methods=['GET'])
 @login_required
 def reservation_list():
 
@@ -673,7 +678,7 @@ def reservation_list():
     return render_template('restaurant_reservations_list.html', reservations=data_dict)
 
 
-@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['POST'])
+#@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['POST'])
 def confirm_participants_post(restaurant_id, reservation_id):
     if (current_user.role == 'ha' or current_user.role == 'customer'):
         return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
@@ -710,7 +715,7 @@ def confirm_participants_post(restaurant_id, reservation_id):
         return make_response(render_template('error.html', message=res['detail'], redirect_url="/restaurants/"+str(restaurant_id)), response.status_code)
        
 
-@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['GET'])
+#@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['GET'])
 @login_required
 def confirm_participants(restaurant_id, reservation_id):
     

@@ -1,6 +1,6 @@
-from monolith.database import db, User, Notification
-from monolith.classes.tests.conftest import test_app 
-from monolith.utilities import create_user_EP
+from database import db, User, Notification
+from classes.tests.conftest import test_app 
+from utilities import create_user_EP
 import json
 from sqlalchemy import exc
 import datetime

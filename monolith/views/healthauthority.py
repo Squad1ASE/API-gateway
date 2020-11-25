@@ -1,7 +1,7 @@
 from flask import Blueprint, redirect, render_template, request, make_response, url_for
-from monolith.database import db, User, Quarantine, Notification
-from monolith.auth import admin_required
-from monolith.forms import GetPatientInformationsForm
+from database import db_session, User
+from auth import admin_required
+from forms import GetPatientInformationsForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
@@ -14,7 +14,7 @@ healthauthority = Blueprint('healthauthority', __name__)
 USER_SERVICE = 'http://127.0.0.1:5060/'
 REQUEST_TIMEOUT_SECONDS = 2
 
-@healthauthority.route('/patient', methods=['GET'])
+#@healthauthority.route('/patient', methods=['GET'])
 @login_required
 def get_patient_informations_GET():
     if(current_user.role != "ha"):
@@ -41,7 +41,7 @@ def get_patient_informations_GET():
 
     return render_template('generic_template.html', form=form)
 
-@healthauthority.route('/patient', methods=['POST'])
+#@healthauthority.route('/patient', methods=['POST'])
 @login_required
 def get_patient_informations_POST():
 

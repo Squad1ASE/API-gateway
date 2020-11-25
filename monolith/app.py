@@ -1,107 +1,36 @@
-import os
-from flask import Flask
-from monolith.database import db, User
-from monolith.views import blueprints
-from monolith.auth import login_manager
-from monolith.utilities import ( insert_ha, create_user_EP, user_login_EP, 
-                                user_logout_EP, customers_example, admin_example, health_authority_example)
-import datetime
-from datetime import timedelta, date
-
-import time
+import connexion, logging
+from flask import jsonify
 from celery import Celery
-from flask_mail import Message, Mail
-
+from database import db_session, init_db
+import requests
 
         
 RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
 
+
 def create_app():
-    app = Flask(__name__)
-    app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
-    app.config['SECRET_KEY'] = 'ANOTHER ONE'
-    #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@postgres:5432/postgres'
-    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///monolith.db"
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    
-    # Flask-Mail configuration
-    app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'gooutsafe1@gmail.com'
-    app.config['MAIL_PASSWORD'] = 'Admin123.'
-    app.config['MAIL_DEFAULT_SENDER'] = 'gooutsafe@gmail.com'
-    for bp in blueprints:
-        app.register_blueprint(bp)
-        bp.app = app
+    logging.basicConfig(level=logging.INFO)
+    app = connexion.App(__name__, specification_dir='static/')
+    app.add_api('swagger.yml')
 
-    db.init_app(app)
-    login_manager.init_app(app)
-    try:
-        db.create_all(app=app)
-    except Exception as e:
-        print(e)
-
-
-    # TODO THIS SECTION MUST BE REMOVED, ONLY FOR DEMO
-    # already tested EndPoints are used to create examples
-    app.config['WTF_CSRF_ENABLED'] = False
-    '''
-    with app.app_context():
-        
-        q = db.session.query(User).filter(User.email == 'admin@admin.com')
-        adm = q.first()
-        if adm is None:
-            try: 
-                # create a first admin user 
-                # test for a user defined in database.db
-                example = User()
-                example.email = 'admin@admin.com'
-                example.phone = '3333333333'
-                example.firstname = 'Admin'
-                example.lastname = 'Admin'
-                example.set_password('admin')
-                example.dateofbirth = datetime.date(2020, 10, 5)
-                example.role = 'admin'           
-                example.is_admin = True
-                db.session.add(example)
-                db.session.commit()
-
-        
-
-                test_client = app.test_client()
-
-                insert_ha(db, app)
-                
-                for user in customers_example:
-                    create_user_EP(test_client,**user)
-
-                for user in restaurant_owner_example:
-                    create_user_EP(test_client,**user)
-
-                for usr_idx,restaurant in enumerate(restaurant_example):
-                    user_login_EP(test_client, restaurant_owner_example[usr_idx]['email'], 
-                                                restaurant_owner_example[usr_idx]['password'])
-
-                    create_restaurant_EP(test_client,restaurant)
-
-                    user_logout_EP(test_client)
-                user_logout_EP(test_client)
-
-            except Exception as e:
-                print(e)
-
-        
-
-    app.config['WTF_CSRF_ENABLED'] = True
-    '''
     
 
+    init_db()
     return app
 
-app=create_app()
+
+# set the WSGI application callable to allow using uWSGI:
+# uwsgi --http :8080 -w app
+app = create_app()
+application = app.app
+# TODO THIS SECTION MUST BE REMOVED, ONLY FOR DEMO
+# already tested EndPoints are used to create examples
+application.config['WTF_CSRF_ENABLED'] = False
+
+@application.teardown_appcontext
+def shutdown_session(exception=None):
+    db_session.remove()
+
 
 if __name__ == '__main__':
-  app.run(host='0.0.0.0')
+    app.run(port=5000)

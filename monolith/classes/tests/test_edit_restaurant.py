@@ -1,6 +1,6 @@
-from monolith.database import db, User, Restaurant, Table, Dish, WorkingDay
-from monolith.classes.tests.conftest import test_app
-from monolith.utilities import create_user_EP, user_login_EP, create_restaurant_EP, customers_example, restaurant_example, insert_ha
+from database import db, User, Restaurant, Table, Dish, WorkingDay
+from classes.tests.conftest import test_app
+from utilities import create_user_EP, user_login_EP, create_restaurant_EP, customers_example, restaurant_example, insert_ha
 import json
 from sqlalchemy import exc
 

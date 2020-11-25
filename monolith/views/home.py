@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect
 
-from monolith.database import db, Notification, User
-from monolith.auth import current_user
+from database import db_session, User
+from auth import current_user
 
 import datetime
 from datetime import timedelta
@@ -12,7 +12,7 @@ home = Blueprint('home', __name__)
 RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
 REQUEST_TIMEOUT_SECONDS = 2
 
-@home.route('/')
+#@home.route('/')
 def index():
     if current_user is not None and hasattr(current_user, 'id'):
         
