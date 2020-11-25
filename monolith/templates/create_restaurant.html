@@ -51,7 +51,7 @@
       function removeForm(event) {
         var subformClass = event.data.param;
         var totForms = $('.' + subformClass).length;
-        if (totForms > 1) {
+        if (totForms > 0) {
           var $removedForm = $(this).closest('.' + subformClass);
           var removedIndex = parseInt($removedForm.data('index'));
 

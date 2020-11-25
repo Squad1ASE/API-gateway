@@ -5,19 +5,24 @@ from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form
 from wtforms.validators import DataRequired, Length, Email, NumberRange
-from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail
+from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
-
-#from monolith.views.restaurants import restaurant_delete
+import os
+import time
+from datetime import date
+from time import mktime
+from datetime import timedelta
 import json
 from monolith.json_converter import user_to_json
 import requests
 
 users = Blueprint('users', __name__)
 
-USER_SERVICE = 'http://127.0.0.1:5060/'
+USER_SERVICE = 'http://127.0.0.1:5070/'
+RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
+#RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
 REQUEST_TIMEOUT_SECONDS = 2
 
 @users.route('/users')
@@ -27,7 +32,7 @@ def _users():
         return make_response(render_template('error.html', message="You are not the admin! Redirecting to home page", redirect_url="/"), 403)
     
     try:
-        reply = requests.delete(USER_SERVICE+'users', timeout=REQUEST_TIMEOUT_SECONDS)
+        reply = requests.get(USER_SERVICE+'users', timeout=REQUEST_TIMEOUT_SECONDS)
         reply_json = reply.json()
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -42,12 +47,13 @@ def _users():
 @users.route('/users/create', methods=['GET'])
 def create_user_GET():
     if current_user is not None and hasattr(current_user, 'id'):
-        return make_response(render_template('error.html', message="You are already logged! Redirecting to home page", redirect_url="/"), 403)
+        return make_response(
+            render_template('error.html', message="You are already logged! Redirecting to home page", redirect_url="/"),
+            403)
 
     form = UserForm()
 
     return render_template('create_user.html', form=form)
-
 
 @users.route('/users/create', methods=['POST'])
 def create_user_POST():
@@ -115,7 +121,6 @@ def edit_user_POST():
                     return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
         if reply.status_code == 200:
-            # TODO this doesn't change the current_user phone
             current_user.phone = edit_dict['user_new_phone']
             db.session.commit()
             return render_template('error.html', message="The information has been updated", redirect_url="/")
@@ -150,148 +155,140 @@ def delete_user():
 @users.route('/users/reservation', methods=['GET'])
 @login_required
 def reservation_list():
-
     if (current_user.role == 'ha' or current_user.role == 'owner'):
-        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+        return make_response(
+            render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
+            403)
+    response = requests.get(RESERVATION_SERVICE+'reservations?user_id=' + str(current_user.id))
+    if response.status_code != 200:
+        if response.status_code == 500:
+            return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
+        elif response.status_code == 400:
+            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/"), 400)
+        else:
+            return make_response(render_template('error.html', message='Error', redirect_url='/'), 500)
+    else:
+        reservation_records = response.json()
+        data_dict=[]
+        for reservation in reservation_records:
+            temp_dict = dict(
+                restaurant_name=db.session.query(Restaurant).filter_by(id = reservation["restaurant_id"]).first().name, #todo endpoint call
+                date=reservation["date"],
+                reservation_id=reservation["id"]
+            )
+            data_dict.append(temp_dict)
 
-    reservation_records = db.session.query(Reservation).filter(
-        Reservation.booker_id == current_user.id, 
-        Reservation.cancelled == False,
-        Reservation.date >= datetime.datetime.now()
-    ).all()
-
-    data_dict = []
-    for reservation in reservation_records:
-        rest_name = db.session.query(Restaurant).filter_by(id = reservation.restaurant_id).first().name
-        temp_dict = dict(
-            restaurant_name = rest_name,
-            date = reservation.date,
-            reservation_id = reservation.id
-        )
-        data_dict.append(temp_dict)
-
-    return render_template('user_reservations_list.html', reservations=data_dict, base_url="http://127.0.0.1:5000/users")
+        return render_template('user_reservations_list.html', reservations=data_dict)
 
 
 @users.route('/users/deletereservation/<reservation_id>')
 @login_required
 def deletereservation(reservation_id):
+    if (current_user.role == 'ha' or current_user.role == 'owner'):
+        return make_response(
+            render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"),
+            403)
 
+    resp = requests.delete(RESERVATION_SERVICE+'reservations/' + str(reservation_id))
+
+    if resp.status_code == 200:
+        return reservation_list()
+    elif resp.status_code == 404:
+        return make_response(
+            render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+    elif resp.status_code == 403:
+        return make_response(render_template('error.html', message="You can't delete a past reservation!",
+                                             redirect_url="/users/reservation_list"), 403)
+    elif resp.status_code == 500:
+        return make_response(
+            render_template('error.html', message="Try again later", redirect_url="/users/reservation_list"), 500)
+    else:
+        return make_response(
+            render_template('error.html', message="Error", redirect_url="/users/reservation_list"), 500)
+
+@users.route('/users/editreservation/<reservation_id>', methods=['POST'])
+def editreservation_post(reservation_id):
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+    form = EditReservationForm()
+    if form.validate_on_submit():
+        if len(form.data['guest']) + 1 > form.data['places']:
+            return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='Too much guests!'), 400)
 
-    reservation = db.session.query(Reservation).filter(
-        Reservation.id == reservation_id,
-        Reservation.booker_id == current_user.id
-    ).first()
+        time_now = datetime.datetime.now().strftime('%H:%M')
+        if form.data['date'] < datetime.date.today() or (form.data['date']==datetime.date.today() and str(request.form['time'])<=time_now ):
+            return make_response(render_template('user_reservation_edit_NUOVA.html', form=form, message='You cannot edit a past reservertion'), 400)
 
-    if reservation is not None:
-        now = datetime.datetime.now()
-        if reservation.date < now:
-            return make_response(render_template('error.html', message="You can't delete a past reservation!", redirect_url="/users/reservation_list"), 403)
-
-        seat_query = Seat.query.filter_by(reservation_id = reservation.id).all()
-
-        for seat in seat_query:
-            seat.confirmed = False
-
-        reservation.cancelled = True
-
-        table = db.session.query(Table).filter(Table.id == reservation.table_id).first()
-        restaurant = db.session.query(Restaurant).filter(Restaurant.id == reservation.restaurant_id).first()
-        restaurant_owner = db.session.query(User).filter(User.id == restaurant.owner_id).first()
-
-        
-        notification = Notification()
-        notification.email = restaurant_owner.email
-        notification.date = now
-        notification.type_ = Notification.TYPE(2)
-        notification.message = 'The reservation of the ' + table.table_name + ' table for the date ' + str(reservation.date) + ' has been canceled'
-        notification.user_id = restaurant_owner.id
-
-        db.session.add(notification)
-
-        db.session.commit()
-        return reservation_list()
-
-    return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+        d = dict(
+            places=form.data['places'],
+            seats_email=form.data['guest'],
+            booker_email = current_user.email,
+            date = str(request.form['date']),
+            time = str(request.form['time'])
+        )
 
 
-@users.route('/users/editreservation/<reservation_id>', methods=['GET','POST'])
+        data = requests.post(RESERVATION_SERVICE+'reservations/'+str(reservation_id), json=d)
+        if data.status_code == 200:                
+            # this isn't an error
+            return make_response(render_template('error.html', message="Reservation changed!", redirect_url="/"), 200)
+
+        else:
+            if data.status_code == 404:
+                return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+            elif data.status_code == 500:
+                return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
+            elif data.status_code == 400:
+                return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/users/reservation_list"), 400)
+            else:
+                return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list'), 500)
+
+    else:
+        #invalid form
+        return make_response(render_template('user_reservation_edit_NUOVA.html', form=form), 400)
+
+@users.route('/users/editreservation/<reservation_id>', methods=['GET'])
 @login_required
 def editreservation(reservation_id):
 
     if (current_user.role == 'ha' or current_user.role == 'owner'):
         return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
 
-    q = db.session.query(Reservation).filter(Reservation.id == reservation_id, Reservation.booker_id == current_user.id).first()
-    
-    if q is not None:
+    response = requests.get(RESERVATION_SERVICE+'reservations/'+str(reservation_id))
+    if response.status_code != 200:
+        if response.status_code == 404:
+            return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+        elif response.status_code == 500:
+            return make_response(render_template('error.html', message="Try it later", redirect_url="/users/reservation_list"), 500)
+        else:
+            return make_response(render_template('error.html', message='Error', redirect_url='/users/reservation_list'), 500)
+    else: 
+        old_res = response.json()
 
-        seat_query = db.session.query(Seat).filter(Seat.reservation_id == q.id, Seat.guests_email != current_user.email).order_by(Seat.id).all()
-        table = db.session.query(Table).filter(Table.id == q.table_id).first()   
-
-        guests_email_list = list()
+        seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 
         for seat in seat_query:
-            guests_email_list.append(seat.guests_email)
+            if seat['guests_email'] == current_user.email:
+                seat_query.remove(seat)                 
 
-        class ReservationForm(FlaskForm):
-            pass
+        form = EditReservationForm()
+        
+        # in the GET we fill all the fields with the old values
+        form['places'].data = old_res['places']
 
-        guests_field_list = []
-        for idx in range(table.capacity-1):
-            setattr(ReservationForm, 'guest'+str(idx+1), f.StringField('guest '+str(idx+1)+ ' email'))
-            guests_field_list.append('guest'+str(idx+1))
+        dt_str = old_res['date']
+        dt= datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+        print(dt.date(), dt.time())
+        form['date'].data = dt.date()
+        form['time'].data = dt.time()
+        if len(seat_query) > 0:
+            for idx, seat in enumerate(seat_query):    
+                email_form = EmailForm()
+                form.guest.append_entry(email_form)       
+                form.guest[idx].guest_email.data = seat['guests_email']
 
-        setattr(ReservationForm, 'display', guests_field_list)
-
-        form = ReservationForm()
-            
-        if request.method == 'POST':
-
-            if form.validate_on_submit():
-
-                for idx, emailField in enumerate(guests_field_list):                        
-                    # checking if already inserted guests email have been changed
-                    if(idx < len(guests_email_list)):
-                        if(form[emailField].data != guests_email_list[idx]):
-                            if not form[emailField].data:
-                                db.session.delete(seat_query[idx]) 
-                            else:
-                                seat_query[idx].guests_email = form[emailField].data
-                        
-                        db.session.commit()
-
-                    # checking if customer added new guests (if seats available)
-                    else:
-                        if form[emailField].data != "":
-                            seat = Seat()
-                            seat.reservation_id = reservation_id
-                            seat.guests_email = form[emailField].data
-                            seat.confirmed = False
-                                
-                            db.session.add(seat)
-                        
-                            db.session.commit()
-
-                # this isn't an error
-                return make_response(render_template('error.html', message="Guests changed!", redirect_url="/"), 222)
-
-        if(len(guests_email_list) >= 1):
-            for idx, guestemail in enumerate(guests_email_list):
-                form[guests_field_list[idx]].data = guestemail
-
-        return render_template('user_reservation_edit.html', form=form)
-    
-    else:
-        return make_response(render_template('error.html', message="Reservation not found", redirect_url="/users/reservation_list"), 404)
+        return render_template('user_reservation_edit_NUOVA.html', form=form)
 
     
-    
-
-
-
-
-
+ 
 

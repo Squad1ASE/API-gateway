@@ -6,7 +6,10 @@ redis
 flask-wtf
 flask-sqlalchemy
 pip-tools
+python-dateutil
 email_validator
 pytest
 pytest-cov
+pytest-mock
 flask_mail==0.9.0
+connexion[swagger-ui]

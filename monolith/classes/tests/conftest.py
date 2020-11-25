@@ -1,6 +1,6 @@
 import pytest
-from monolith.database import db
-from monolith.app import create_app
+from database import db
+from app import create_app
 import tempfile
 import os
 

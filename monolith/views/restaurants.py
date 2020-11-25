@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, redirect, render_template, request, make_response
 from monolith.database import db, User, Quarantine, Notification
 from monolith.auth import admin_required, current_user
@@ -19,13 +21,14 @@ from time import mktime
 from datetime import timedelta
 from sqlalchemy import or_
 import requests
-
-RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
-RESERVATIONS_SERVICE = "http://0.0.0.0:5060/"
-REQUEST_TIMEOUT_SECONDS = 2
+import os
 
 restaurants = Blueprint('restaurants', __name__)
 
+RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
+RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
+#RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
+REQUEST_TIMEOUT_SECONDS = 2
 
 def _check_working_days(form_working_days):
     working_days_to_add = []
@@ -285,6 +288,42 @@ def _restaurants(message=''):
 
     return render_template("restaurants.html", message=message, restaurants=allrestaurants, base_url="http://127.0.0.1:5000/restaurants")
 
+@restaurants.route('/restaurants/<int:restaurant_id>', methods=['POST'])
+def create_reservation(restaurant_id):
+    if (current_user.role == 'ha' or current_user.role == 'owner'):
+        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
+    form = ReservationRequest()
+    positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
+    if positive_record is not None:
+        return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
+    if form.validate_on_submit():
+
+        #TODO: controllo su data nel passato
+
+        #weekday = form.date.data.weekday() + 1
+        reservation_time = time.strptime(request.form['time'], '%H:%M')
+        reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])
+        reservation_datetime = datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
+        #reservation_datetime_str = str(reservation_datetime_str) + ' ' + str(reservation_time)
+        temp_dict = dict(
+            booker_id = current_user.id,
+            booker_email = current_user.email,
+            restaurant_id = restaurant_id,
+            date = str(request.form['date']),
+            time = str(request.form['time']),
+            places = form.guests.data
+        )
+        #print(temp_dict)
+        res = requests.put(RESERVATION_SERVICE+str('reservations'), json=temp_dict)
+        if res.status_code == 200:
+            return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
+        else:
+            if res.status_code == 400:
+                return make_response(render_template('error.html', message="Bad Request", redirect_url="/"), 400)
+            elif res.status_code == 500:
+                return make_response(render_template('error.html', message="Try again later", redirect_url="/"), 500)
+            else:
+                return make_response(render_template('error.html', message="Error", redirect_url="/"), 500)
 
 @restaurants.route('/restaurants/<int:restaurant_id>', methods=['GET'])
 @login_required
@@ -321,88 +360,7 @@ def restaurant_sheet_GET(restaurant_id):
     )    
 
     return render_template("restaurantsheet.html", **data_dict)
-
-
-@restaurants.route('/restaurants/<int:restaurant_id>', methods=['POST'])
-@login_required
-def restaurant_sheet_POST(restaurant_id):
-
-    if (current_user.role == 'ha' or current_user.role == 'owner'):
-        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
-
-    form = ReservationRequest(request.form)
-
-    if form.validate_on_submit():
-        tavoli = db.session.query(Table).filter(Table.restaurant_id == restaurant_id).all()
-        # 1 transform datetime from form in week day
-        # 2 search inside working day DB with restaurant ID, check if in the specific day and time the restaurant is open
-        # 3 check the list of available tables, the search starts from reservation (consider avg_stay_time)
-        # 4 check in the remaining tables if there is at least one that has more or equals seats then the required
-                    
-        # if customer is under observation (positive), reservation is denied
-
-        positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
-        if positive_record is not None:
-            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="You are under observation! Reservations are denied"), 222)
-
-        weekday = form.date.data.weekday() + 1
-        workingday = db.session.query(WorkingDay).filter(WorkingDay.restaurant_id == int(restaurant_id)).filter(WorkingDay.day == WorkingDay.WEEK_DAYS(weekday)).first()
-                    
-        if workingday is None:
-            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="Restaurant isn't open this day"), 333)
-                    
-        time_span = False
-        reservation_time = time.strptime(request.form['time'], '%H:%M')
-        for shift in workingday.work_shifts:
-            try:
-                start = time.strptime(shift[0], '%H:%M')
-                end = time.strptime(shift[1], '%H:%M')
-                if reservation_time >= start and reservation_time <= end:
-                    time_span = True
-                    break
-            except:
-                print("except")
-
-        if time_span is False:
-            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="Restaurant isn't open at this hour"), 444)
-
-            table_records = db.session.query(Table).filter(
-                Table.restaurant_id == int(restaurant_id),
-                Table.capacity >= form.guests.data
-            ).all()
-
-        if len(table_records) == 0:
-            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="There are no table with this capacity"), 555)
-
-        reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])
-        reservation_datetime = datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
-
-        start_reservation = reservation_datetime - timedelta(minutes=restaurantRecord.avg_time_of_stay)
-        end_reservation = reservation_datetime + timedelta(minutes=restaurantRecord.avg_time_of_stay)
-
-    
-        reserved_table_records = db.session.query(Reservation).filter(
-            Reservation.date >= start_reservation,
-            Reservation.date <= end_reservation,
-            Reservation.cancelled == False
-        ).all()
-
-        #reserved_table_id = reserved_table_records.values('table_id')
-        reserved_table_id = [reservation.table_id for reservation in reserved_table_records]
-        table_records.sort(key=lambda x: x.capacity)
-
-        table_id_reservation = None
-        for table in table_records:
-            if table.id not in reserved_table_id:
-                table_id_reservation = table.id
-                break
-
-        if table_id_reservation is None:
-            return make_response(render_template('restaurantsheet.html', **data_dict, state_message="No table available for this amount of people at this time"), 404)
-        else:
-            return redirect('/restaurants/'+str(restaurant_id)+'/reservation?table_id='+str(table_id_reservation)+'&'+'guests='+str(form.guests.data)+'&'+'date='+reservation_datetime_str)
-                        #return redirect('/restaurants/'+str(restaurant_id)+'/reservation', table_id=table_id_reservation, guests=form.guests.data)
-    return redirect('/restaurants/'+str(restaurant_id))                    
+                   
 
 @restaurants.route('/restaurants/delete/<int:restaurant_id>', methods=['GET'])
 @login_required
@@ -417,7 +375,6 @@ def restaurant_delete(restaurant_id):
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
         return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
-
 
     if reply.status_code != 200:
         return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
@@ -554,9 +511,6 @@ def _like(restaurant_id):
     return _restaurants(message)
 
 
-
-
-
 @restaurants.route('/restaurants/reviews/<restaurant_id>', methods=['GET'])
 @login_required
 def create_review_GET(restaurant_id):
@@ -653,133 +607,83 @@ def create_review(restaurant_id):
     else:
         return make_response(render_template("reviews.html", form=form,reviews=review_reply_json), 400)
 
-'''
-@restaurants.route('/restaurants/<int:restaurant_id>/reservation', methods=['GET','POST'])
-@login_required
-def reservation(restaurant_id):
-  
-    if (current_user.role == 'owner' or current_user.role == 'ha'):
-        return make_response(render_template('error.html', message="You are not a customer! Redirecting to home page", redirect_url="/"), 403)
-
-    positive_record = db.session.query(Quarantine).filter(Quarantine.user_id == current_user.id, Quarantine.in_observation == True).first()
-    if positive_record is not None:
-        return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
-
-    table_id = int(request.args.get('table_id'))
-
-    # minus 1 because one is the user placing the reservation
-    guests = int(request.args.get('guests')) -1
-    date = datetime.datetime.strptime(request.args.get('date'), "%d/%m/%Y %H:%M")
-
-        
-    class ReservationForm(FlaskForm):
-        pass
-
-    guests_field_list = []
-    for idx in range(guests):
-        setattr(ReservationForm, 'guest'+str(idx+1), f.StringField('guest '+str(idx+1)+ ' email', validators=[Length(10, 64), Email()]))
-        guests_field_list.append('guest'+str(idx+1))
-
-    setattr(ReservationForm, 'display', guests_field_list)
-
-    form = ReservationForm()
-
-    if request.method == 'POST':
-
-            if form.validate_on_submit():
-
-                reservation = Reservation()
-                reservation.booker_id = current_user.id
-                reservation.restaurant_id = restaurant_id
-                reservation.table_id = table_id
-                reservation.date = date
-                reservation.cancelled = False
-
-                #this prevents concurrent reservations
-                check_reservation = db.session.query(Reservation).filter(
-                            Reservation.date == reservation.date,
-                            Reservation.table_id == reservation.table_id,
-                            Reservation.restaurant_id == reservation.restaurant_id,
-                            Reservation.cancelled == False
-                        ).first()
-
-                if check_reservation is not None:
-                    return render_template('error.html', message="Ops someone already placed a reservation", redirect_url='/restaurants/'+str(restaurant_id))
-
-
-                db.session.add(reservation)
-                db.session.commit()
-                for emailField in guests_field_list:
-                    
-                    seat = Seat()
-                    seat.reservation_id = reservation.id
-                    seat.guests_email = form[emailField].data
-                    seat.confirmed = False
-                    
-                    db.session.add(seat)
-                    
-                # seat of the booker
-                seat = Seat()
-                seat.reservation_id = reservation.id
-                seat.guests_email = current_user.email
-                seat.confirmed = False
-
-                db.session.add(seat)
-                db.session.commit()
-
-                # this isn't an error
-                return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
-                
-    return render_template('reservation.html', form=form)
-
-
-
-
-
 
 @restaurants.route('/restaurants/reservation_list', methods=['GET'])
 @login_required
 def reservation_list():
-    if current_user is not None and hasattr(current_user, 'id'):
 
-        if (current_user.role == 'ha' or current_user.role == 'customer'):
-            return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
-        
-        data_dict = []
-        restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
-
-        for restaurant in restaurants_records:
-            
-            reservation_records = db.session.query(Reservation).filter(
-                Reservation.restaurant_id == restaurant.id, 
-                Reservation.cancelled == False,
-                Reservation.date >= datetime.datetime.now() - timedelta(hours=3)
-            ).all()
-
-            for reservation in reservation_records:
-                booker = db.session.query(User).filter(User.id == reservation.booker_id).first()
-                seat = db.session.query(Seat).filter(Seat.reservation_id == reservation.id).all()
-                table = db.session.query(Table).filter(Table.id == reservation.table_id).first()
+    if (current_user.role == 'ha' or current_user.role == 'customer'):
+        return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
+    
+    data_dict = []
+    restaurants_records = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
+    for restaurant in restaurants_records:
+        response = requests.get(RESERVATION_SERVICE+'reservations?restaurant_id='+str(restaurant.id))
+        if (response.status_code != 200):
+            if response.status_code == 500:
+                return make_response(render_template('error.html', message="Try it later", redirect_url="/"), 500)
+            elif response.status_code == 400:
+                return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/"), 400)
+            else:
+                return make_response(render_template('error.html', message='Error', redirect_url='/'), 500)
+        else:
+            for reservation in response.json():
+                print(reservation)
+                booker = db.session.query(User).filter_by(id=reservation['booker_id']).first()
+                seat = reservation['seats']
+                table = db.session.query(Table).filter_by(restaurant_id=restaurant.id, id=reservation['table_id']).first()
                 temp_dict = dict(
                     restaurant_name = restaurant.name,
                     restaurant_id = restaurant.id,
-                    date = reservation.date,
+                    date = reservation['date'],
                     table_name = table.table_name,
                     number_of_guests = len(seat),
                     booker_fn = booker.firstname,
                     booker_ln = booker.lastname,
                     booker_phone = booker.phone,
-                    reservation_id = reservation.id
+                    reservation_id = reservation['id']
                 )
                 data_dict.append(temp_dict)
-
-        data_dict = sorted(data_dict, key = lambda i: (i['restaurant_name'],i['date']))
-
                 
     return render_template('restaurant_reservations_list.html', reservations=data_dict)
 
 
-@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['GET', 'POST'])
+@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['POST'])
+def confirm_participants_post(restaurant_id, reservation_id):
+    if (current_user.role == 'ha' or current_user.role == 'customer'):
+        return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
+
+    restaurant = db.session.query(Restaurant).filter_by(id=restaurant_id).first()
+    #restaurant = requests.get(RESTAURANT_SERVICE+str(restaurant_id)).json
+    if (current_user.id != restaurant.owner_id):
+        return make_response(render_template('error.html', message="You are not the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
+
+    class ConfirmedSeatFormTest(FlaskForm):
+        guests = f.FieldList(f.BooleanField())
+        display = ['guests']
+
+    form = ConfirmedSeatFormTest()
+    entrances = []
+    for key in request.form:
+        if key != 'csrf_token':
+            email = request.form[key]
+            entrances.append(email)
+    response = requests.post(RESERVATION_SERVICE+'reservations/'+str(reservation_id)+'/entrances', json=entrances)
+    if response.status_code == 200:
+        return make_response(render_template('error.html', message="Participants confirmed", redirect_url="/"), 200)
+    else:
+        if response.status_code == 500:
+            return make_response(render_template('error.html', message="Try it later", redirect_url="/restaurants/<restaurant_id>"), 500)
+        elif response.status_code == 400:
+            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/restaurants/<restaurant_id>"), 400)
+        elif response.status_code == 404:
+            return make_response(render_template('error.html', message="Reservation not found", redirect_url="/restaurants/<restaurant_id>"), 400)
+        elif response.status_code == 403:
+            return make_response(render_template('error.html', message='Reservation is too old or in the future', redirect_url="/restaurants/<restaurant_id>"), 403)
+        else:
+            return make_response(render_template('error.html', message='Error', redirect_url='/restaurants/<restaurant_id>'), 500)
+
+@restaurants.route('/restaurants/<restaurant_id>/reservation/<reservation_id>', methods=['GET'])
 @login_required
 def confirm_participants(restaurant_id, reservation_id):
     
@@ -787,46 +691,39 @@ def confirm_participants(restaurant_id, reservation_id):
         return make_response(render_template('error.html', message="You are not an owner! Redirecting to home page", redirect_url="/"), 403)
 
     restaurant = db.session.query(Restaurant).filter_by(id=restaurant_id).first()
+    #restaurant = requests.get(RESTAURANT_SERVICE+str(restaurant_id)).json
     if (current_user.id != restaurant.owner_id):
         return make_response(render_template('error.html', message="You are not the owner of this restaurant! Redirecting to home page", redirect_url="/"), 403)
 
     # check if the reservation is in the past or in the future
+    response = requests.get(RESERVATION_SERVICE+'reservations/'+str(reservation_id))
+    if response.status_code != 200:
+        if response.status_code == 500:
+            return make_response(render_template('error.html', message="Try it later", redirect_url="/restaurants/<restaurant_id>"), 500)
+        elif response.status_code == 400:
+            return make_response(render_template('error.html', message="Wrong parameters", redirect_url="/restaurants/<restaurant_id>"), 400)
+        elif response.status_code == 404:
+            return make_response(render_template('error.html', message="Reservation not found", redirect_url="/restaurants/<restaurant_id>"), 400)
+        else:
+            return make_response(render_template('error.html', message='Error', redirect_url='/restaurants/<restaurant_id>'), 500)
+    else: 
+        res = response.json()
+        seats = res['seats']
 
-    reservation = db.session.query(Reservation).filter_by(id=reservation_id).first()
-    if (reservation.date <= datetime.datetime.now() - timedelta(hours=3) or reservation.date >= datetime.datetime.now()):
-        return make_response(render_template('error.html', message="You can't confirm participants for this reservation!", redirect_url="/restaurants/reservation_list"), 403)
+        class ConfirmedSeatFormTest(FlaskForm):
+            guests = f.FieldList(f.BooleanField())
+            display = ['guests']
 
-    # get the guests in this reservation
+        form = ConfirmedSeatFormTest()
 
-    seats = db.session.query(Seat).filter_by(reservation_id=reservation_id).all()
-
-    class ConfirmedSeatFormTest(FlaskForm):
-        guests = f.FieldList(f.BooleanField())
-        display = ['guests']
-
-    form = ConfirmedSeatFormTest()
-
-    guests = []
-    
-    for seat in seats:
-        if seat.confirmed == True:
-            # in this case the participants are already confirmed by the owner
-            return make_response(render_template('error.html', message="Participants are already confirmed for this reservation", redirect_url="/restaurants/reservation_list"), 403)
-        guests.append(seat.guests_email)
-
-    if request.method == 'POST':
+        guests = []
         
-        # get all the confirmed participants
-        for key in request.form:
-            if key != 'csrf_token':
-                email = request.form[key]
-                seat = db.session.query(Seat).filter_by(guests_email=email).filter_by(reservation_id=reservation_id).first()
-                seat.confirmed = True
-                db.session.commit()
+        for seat in seats:
+            #if seat['confirmed'] == True:
+                # in this case the participants are already confirmed by the owner
+            #    return make_response(render_template('error.html', message="Participants are already confirmed for this reservation", redirect_url="/restaurants/reservation_list"), 403)
+            guests.append(seat['guests_email'])
 
-        #TODO: maybe create an apposite page that lists all confirmed participants
-        return make_response(render_template('error.html', message="Participants confirmed", redirect_url="/"), 200)
-
-
-    return render_template('restaurant_confirm_participants.html', guests=guests, form=form)
-'''
+        
+            
+        return render_template('restaurant_confirm_participants.html', guests=guests, form=form)
