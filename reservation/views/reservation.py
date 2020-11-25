@@ -1,6 +1,6 @@
 import requests
 from flask import Blueprint, jsonify, Response, request
-from reservation.database import db_session, Reservation, Seat
+from database import db_session, Reservation, Seat
 import datetime
 import json
 import time
@@ -8,9 +8,8 @@ from time import mktime
 from datetime import timedelta
 import connexion
 import ast
-import reservation.app
 #from app.application import delete_restaurant_reservations_task
-from reservation.api_call import get_restaurant, put_notification
+from api_call import get_restaurant, put_notification
 import dateutil.parser
 from sqlalchemy import or_, and_
 

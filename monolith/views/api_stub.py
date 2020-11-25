@@ -1,13 +1,13 @@
 from flask import Blueprint, redirect, render_template, request, make_response, jsonify, Response
 
-from monolith.database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
-from monolith.auth import admin_required, current_user
+from database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
+from auth import admin_required, current_user
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
-from monolith.forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
+from forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
                             SubReservationPeopleEmail, ReservationRequest, RestaurantSearch, 
                             EditRestaurantForm, ReviewForm )
-from monolith.views import auth
+from views import auth
 import datetime
 from flask_wtf import FlaskForm
 import wtforms as f

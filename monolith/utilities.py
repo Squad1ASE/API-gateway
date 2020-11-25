@@ -1,4 +1,4 @@
-from monolith.database import Restaurant, WorkingDay, User
+from database import Restaurant, WorkingDay, User
 import datetime
 
 

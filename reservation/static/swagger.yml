@@ -11,7 +11,7 @@ paths:
       tags:
         - All reservations
       summary: Get all the reservations
-      operationId: reservation.views.reservation.get_all_reservations
+      operationId: views.reservation.get_all_reservations
       parameters:
         - in: query
           name: param
@@ -67,7 +67,7 @@ paths:
       tags:
         - Create reservation
       summary: Create a reservation
-      operationId: reservation.views.reservation.create_reservation
+      operationId: views.reservation.create_reservation
       requestBody:
         description: Reservation to create
         required: true
@@ -116,7 +116,7 @@ paths:
       tags:
         - Delete all reservations for a restaurant or user
       summary: Delete all reservations for a restaurant or user 
-      operationId: reservation.views.reservation.delete_reservations
+      operationId: views.reservation.delete_reservations
       requestBody:
         description: Unique ID of the restaurants restaurant or user
         required: true
@@ -175,7 +175,7 @@ paths:
           required: true
           description: Numeric ID of the reservation
           example: 1
-      operationId: reservation.views.reservation.get_reservation
+      operationId: views.reservation.get_reservation
       responses:
         200:
           description: Return the reservation with this ID
@@ -212,7 +212,7 @@ paths:
           required: true
           description: Numeric ID of the reservation
           example: 1
-      operationId: reservation.views.reservation.delete_reservation
+      operationId: views.reservation.delete_reservation
       responses:
         200:
           description: The reservation is deleted
@@ -253,7 +253,7 @@ paths:
           required: true
           description: Numeric ID of the reservation
           example: 1
-      operationId: reservation.views.reservation.edit_reservation
+      operationId: views.reservation.edit_reservation
       requestBody:
         description: Reservation to edit
         required: true
@@ -305,7 +305,7 @@ paths:
           required: true
           description: Numeric ID of the reservation
           example: 1
-      operationId: reservation.views.reservation.confirm_participants
+      operationId: views.reservation.confirm_participants
       responses:
         200:
           description: The entrances are updated
@@ -332,7 +332,7 @@ paths:
       tags:
         - contactTracing
       summary: Do contact tracing
-      operationId: reservation.views.reservation.do_contact_tracing
+      operationId: views.reservation.do_contact_tracing
       requestBody:
         description: Marked as positive email and date
         required: true

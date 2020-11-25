@@ -1,7 +1,7 @@
 from flask import Blueprint, redirect, render_template, request, make_response, url_for
-from monolith.database import db, User, Quarantine, Seat, Reservation, Notification, Restaurant, Table
-from monolith.auth import admin_required
-from monolith.forms import GetPatientInformationsForm
+from database import db, User, Quarantine, Seat, Reservation, Notification, Restaurant, Table
+from auth import admin_required
+from forms import GetPatientInformationsForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime

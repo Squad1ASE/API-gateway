@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form, BooleanField
 from wtforms.validators import DataRequired, Length, Email, NumberRange, ValidationError
-from monolith.database import Restaurant, WorkingDay
+from database import Restaurant, WorkingDay
 import ast
 
 

@@ -1,14 +1,14 @@
 import json
 
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
-from monolith.auth import admin_required, current_user
+from database import db, User, Review, Restaurant, Like, WorkingDay, Table, Dish, Seat, Reservation, Quarantine, Notification
+from auth import admin_required, current_user
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
-from monolith.forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
+from forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
                             SubReservationPeopleEmail, ReservationRequest, RestaurantSearch, 
                             EditRestaurantForm, ReviewForm )
-from monolith.views import auth
+from views import auth
 import datetime
 from flask_wtf import FlaskForm
 import wtforms as f
@@ -146,13 +146,18 @@ def create_reservation(restaurant_id):
         return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
     if form.validate_on_submit():
 
-        #TODO: controllo su data nel passato
+        
 
         #weekday = form.date.data.weekday() + 1
         reservation_time = time.strptime(request.form['time'], '%H:%M')
         reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])
         reservation_datetime = datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
         #reservation_datetime_str = str(reservation_datetime_str) + ' ' + str(reservation_time)
+
+        #TODO: da testare
+        if reservation_datetime <= datetime.datetime.now():
+            return make_response(render_template('error.html', message="This reservation is in the past", redirect_url="/restaurants/<int:restaurant_id>"), 403)
+
         temp_dict = dict(
             booker_id = current_user.id,
             booker_email = current_user.email,

@@ -21,40 +21,60 @@ services:
     networks:
       - reservation
       - monolith
+      
+  celery-reservation:
+    build: reservation
+    env_file: 
+      - variables.env
+    command: /bin/sh celery_start.sh
+    user: root
+    networks:
+      - reservation
+    links:
+      - redis-reservation
+    depends_on:
+      - flask-reservation
+      - redis-reservation
+      - postgres-reservation
+  
+  redis-reservation:
+    container_name: redis-reservation
+    restart: always
+    networks:
+      - reservation
+    image: redis:latest
+    ports:
+      - "6380:6379"
+    links:
+      - postgres-reservation
+    depends_on:
+      - postgres-reservation
 
   flask-reservation:
     build: reservation
-    environment: 
-      - DATABASE_URI=postgresql://postgres:postgres@postgres-reservation:5432/postgres
-      - FLASK_RUN_HOST=0.0.0.0
-      - FLASK_APP=app.py
-      - PYTHONPATH=./
-      - API_GATEWAY_SERVICE=http://nginx-monolith:80/
+    env_file: 
+      - variables.env
     ports:
       - "5100-5110:5100"
     links:
       - postgres-reservation
     networks:
       - reservation
-    command: flask run -p 5100
+    command: python app.py
     depends_on:
       - postgres-reservation
 
   flask-monolith:
     build: monolith
-    environment: 
-      - DATABASE_URI=postgresql://postgres:postgres@postgres-monolith:5432/postgres
-      - FLASK_RUN_HOST=0.0.0.0
-      - FLASK_APP=app.py
-      - PYTHONPATH=./
-      - RESERVATION_SERVICE=http://nginx-reservation:8080/
+    env_file: 
+      - variables.env
     ports:
       - "5000-5010:5000"
     links:
       - postgres-monolith
     networks:
       - monolith
-    command: flask run
+    command: python app.py
     depends_on:
       - postgres-monolith
 
@@ -63,8 +83,8 @@ services:
     hostname: postgres-reservation
     restart: always
     image: postgres:latest
-    environment: 
-      - POSTGRES_HOST_AUTH_METHOD=trust
+    env_file: 
+      - variables.env
     expose:
       - "5432"
     networks:
@@ -75,8 +95,8 @@ services:
     hostname: postgres-monolith
     restart: always
     image: postgres:latest
-    environment: 
-      - POSTGRES_HOST_AUTH_METHOD=trust
+    env_file: 
+      - variables.env
     expose:
       - "5432"
     networks:

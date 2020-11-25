@@ -1,16 +1,16 @@
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import (db, User, Reservation, Restaurant, Seat,
+from database import (db, User, Reservation, Restaurant, Seat,
                                Quarantine, Notification, Like, Review, Table)
-from monolith.auth import admin_required
+from auth import admin_required
 from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form
 from wtforms.validators import DataRequired, Length, Email, NumberRange
-from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
+from forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
-from monolith.views.restaurants import restaurant_delete
+from views.restaurants import restaurant_delete
 import requests
 import os
 

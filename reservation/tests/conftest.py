@@ -1,7 +1,7 @@
-from reservation.app import create_app
+from app import create_app
 import pytest
 import os
-from reservation.database import db_session
+from database import db_session
 
 @pytest.fixture
 def test_app():

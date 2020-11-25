@@ -1,14 +1,15 @@
 import datetime
 import json
+import os
 
 import connexion, logging
-from reservation import database
+import database
 import requests
 from celery import Celery
 from flask import jsonify
 from api_call import put_notification
 
-from reservation.database import db_session, Reservation, Seat
+from database import db_session, Reservation, Seat
 
 logging.basicConfig(level=logging.INFO)
 database.init_db()
@@ -35,10 +36,10 @@ application = app.app
 def make_celery(app):
     celery = Celery(
         app.import_name,
-        # broker=os.environ['CELERY_BROKER_URL'],
-        # backend=os.environ['CELERY_BACKEND_URL']
-        backend='redis://localhost:6379',
-        broker='redis://localhost:6379'
+        broker=os.environ['CELERY_RESERVATION_BROKER_URL'],
+        backend=os.environ['CELERY_RESERVATION_BACKEND_URL']
+        #backend='redis://localhost:6379',
+        #broker='redis://localhost:6379'
     )
     celery.conf.update(app.config)
     celery.conf.beat_schedule = {'hello': {
@@ -128,4 +129,4 @@ def shutdown_session(exception=None):
 
 
 if __name__ == '__main__':
-    app.run(port=5100)
+    app.run(host='0.0.0.0', port=5100)

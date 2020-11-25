@@ -3,9 +3,9 @@ from flask import Flask
 from database import ( db, User, Restaurant, Table, WorkingDay,
                                 Reservation, Like, Seat, Review, 
                                 Dish, Quarantine, Notification )
-from monolith.views import blueprints
-from monolith.auth import login_manager
-from monolith.utilities import ( insert_ha, create_user_EP, user_login_EP, 
+from views import blueprints
+from auth import login_manager
+from utilities import ( insert_ha, create_user_EP, user_login_EP, 
                                 user_logout_EP, create_restaurant_EP, customers_example, 
                                 restaurant_example, admin_example, health_authority_example, 
                                 restaurant_owner_example )
@@ -22,7 +22,7 @@ def create_app():
     app = Flask(__name__)
     app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
     app.config['SECRET_KEY'] = 'ANOTHER ONE'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_API_URI']
     #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gooutsafe.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
@@ -103,7 +103,7 @@ def create_app():
     return app
 
 
-    app=create_app()
+app=create_app()
 
-    if __name__ == '__main__':
-        app.run(host='0.0.0.0')
+if __name__ == '__main__':
+        app.run(host='0.0.0.0', port=5000)
