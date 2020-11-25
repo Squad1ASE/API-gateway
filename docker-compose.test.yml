@@ -1,51 +1,21 @@
 version: "3"
-#web:
-#  build: .
-#  dockerfile: Dockerfile
-#  environment: 
-#    - PYTHONPATH=./
-#  ports:
-#    - "5000:5000"
-#  command: pytest monolith/classes/tests/ --cov=monolith
 services:
-    flask:
-      build: 
-        context: .
-        dockerfile: Dockerfile
+    flask-reservation:
+      build: monolith
       environment: 
-        - DATABASE_URI=postgresql://postgres:postgres@postgres:5432/postgres
+        - DATABASE_URI=sqlite:///reservation.db
         - FLASK_RUN_HOST=0.0.0.0
-        - FLASK_APP=monolith/app.py
-        - CELERY_BROKER_URL=redis://redis:6379
-        - CELERY_BACKEND_URL=redis://redis:6379
-        - PYTHONPATH=monolith/
-      ports:
-        - "5000-5010:5000"
-      links:
-        - postgres
-      networks:
-        - default
-      command: pytest monolith/classes/tests/ --cov=monolith
-      depends_on:
-        - postgres
-      #volumes:
-      #  - .:/gooutsafe
-
-    postgres:
-      container_name: postgres
-      hostname: postgres
-      restart: always
-      image: postgres:latest
+        - FLASK_APP=app.py
+        - PYTHONPATH=./
+        - API_GATEWAY_SERVICE=http://nginx-reservation:80
+      command: pytest tests/ -cov=reservation --cov-report term-missing
+      
+    flask-monolith:
+      build: monolith
       environment: 
-        - POSTGRES_HOST_AUTH_METHOD=trust
-      #volumes_from:
-      #  - data
-      #volumes:
-      #  - ./postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-      #  - ./backups/postgresql:/backup
-      #env_file:
-      #  - env
-      expose:
-        - "5432"
-      networks:
-        - default
+        - DATABASE_URI=sqlite:///monolith.db
+        - FLASK_RUN_HOST=0.0.0.0
+        - FLASK_APP=app.py
+        - PYTHONPATH=./
+        - RESERVATION_SERVICE=http://nginx-reservation:8080
+      command: pytest classes/tests/ -cov=monolith --cov-report term-missing

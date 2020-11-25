@@ -10,7 +10,7 @@
       <h2>Menu:  </h2> 
       {% for dish in dishes%}
       <ul>
-        <h4>Dish: {{dish.dish_name}}      Price: {{dish.price}}      ingredients: {{dish.ingredients}}</h4> 
+        <h4>Dish: {{dish.name}}      Price: {{dish.price}}      ingredients: {{dish.ingredients}}</h4> 
       </ul>
       {% endfor %}
       <ul>
@@ -20,24 +20,26 @@
 
       {% endif %}
     </ul>
-    <h2>Make a reservation:</h2> 
-    {{state_message}}
-    <form action="" method="POST">
-      {{ form.hidden_tag() }}
-      <dl>
-       {% for field in form.display %}
-       <dt>{{ form[field].label }}</dt>
-       <dd>{{ form[field]() }}</dd>
-         {% if form[field].errors %}
-            {% for e in form[field].errors %}
-             <p class="help-block">{{ e }} </p>
-            {% endfor %}
-         {% endif %}
-       {% endfor %}
-      </dl>
-      <p>
-      <input type=submit value="Book">
-    </form>
+    {% if current_user.role != "owner" %}
+      <h2>Make a reservation:</h2> 
+      {{state_message}}
+      <form action="" method="POST">
+        {{ form.hidden_tag() }}
+        <dl>
+        {% for field in form.display %}
+        <dt>{{ form[field].label }}</dt>
+        <dd>{{ form[field]() }}</dd>
+          {% if form[field].errors %}
+              {% for e in form[field].errors %}
+              <p class="help-block">{{ e }} </p>
+              {% endfor %}
+          {% endif %}
+        {% endfor %}
+        </dl>
+        <p>
+        <input type=submit value="Book">
+      </form>
+    {% endif %}
 
     <br>
     <br>

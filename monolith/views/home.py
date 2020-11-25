@@ -1,11 +1,16 @@
 from flask import Blueprint, render_template, redirect
-from monolith.database import db, Restaurant, Like, Notification, User
+
+from monolith.database import db, Notification, User
 from monolith.auth import current_user
+
 import datetime
 from datetime import timedelta
+import requests
 
 home = Blueprint('home', __name__)
 
+RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
+REQUEST_TIMEOUT_SECONDS = 2
 
 @home.route('/')
 def index():
@@ -53,16 +58,24 @@ def index():
                 possible_infected_sorted = sorted(possible_infected_not_sorted, key=lambda k: k['date']) 
             return render_template("homepage_info.html", possible_infected=possible_infected_sorted) 
 
-          
+        # TODO fare richiesta a USER per le notifiche ogni volta che si va in homepage
+        # andrebbe quindi cambiato il fatto che le notifiche sono passate al current_user durante login
         if current_user.role == 'customer':
-            notifications = db.session.query(Notification).filter(Notification.user_id == current_user.id).all()
-            return render_template("homepage_info.html", notifications=notifications)
+            return render_template("homepage_info.html", notifications=current_user.notification)
 
 
         if current_user.role == 'owner':
-            restaurants = db.session.query(Restaurant).filter(Restaurant.owner_id == current_user.id)
-            notifications = db.session.query(Notification).filter(Notification.user_id == current_user.id).all()
-            return render_template("homepage_info.html", notifications=notifications, restaurants=restaurants) 
+            
+            try:
+
+                reply = requests.get(RESTAURANT_SERVICE+'restaurants?owner_id='+str(current_user.id), timeout=REQUEST_TIMEOUT_SECONDS)
+                reply_json = reply.json()
+
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                message = "Something gone wrong, restaurants list not available, try again later"
+                return render_template("homepage_info.html", message=message, notifications=current_user.notification) 
+
+            return render_template("homepage_info.html", restaurants=reply_json, notifications=current_user.notification) 
     else:
         return render_template("homepage.html") 
 

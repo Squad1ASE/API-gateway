@@ -5,7 +5,7 @@
       <br>
       {# HA #}
       {% if current_user.role == 'ha' %}
-        <h2><a href="/patient_informations">Get patient informations</a></h2>
+        <h2><a href="/patient">Get patient informations</a></h2>
         <br>
 
         {% if possible_infected %}
@@ -47,7 +47,10 @@
         <a href="/restaurants/search">Search restaurants!</a>
         <br>
         <br>
-        <a href="/users/reservation_list">Reservations list</a>
+        <a href="/users/reservation">Reservations list</a>
+        <br>
+        <br>
+        <a href="/users/edit">Change your phone number or password</a>
       {% endif %}
       
 
@@ -55,16 +58,17 @@
       {# OWNER #}
       {% if current_user.role == 'owner' %}
         
-        <h2><a href='/create_restaurant'>Insert a new restaurant</a></h2>
+        <h2><a href='/restaurants/create'>Insert a new restaurant</a></h2>
         <br>
         <a href="/restaurants/reservation_list">Reservations list</a>
         <br>
         <h2>Restaurants list: </h2>
+            {{ message }}
           <ul>
             {% for restaurant in restaurants: %}
             <li>
             {{restaurant.name}}     
-            <a href="/edit_restaurant_informations/{{restaurant.id}}">Edit</a> 
+            <a href="/edit_restaurant/{{restaurant.id}}">Edit</a> 
             <a href="/restaurants/delete/{{restaurant.id}}">Delete</a>
             </li>
             {% endfor %}
@@ -96,7 +100,7 @@
 
         <br>
         <br>
-        <a href="/delete_user">Unregister!</a>
+        <a href="/users/delete">Unregister!</a>
         <br>
         <br>
       {% endif %}

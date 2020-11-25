@@ -51,7 +51,7 @@
       function removeForm(event) {
         var subformClass = event.data.param;
         var totForms = $('.' + subformClass).length;
-        if (totForms > 1) {
+        if (totForms > 0) {
           var $removedForm = $(this).closest('.' + subformClass);
           var removedIndex = parseInt($removedForm.data('index'));
 
@@ -81,7 +81,7 @@
         }
 
         // Maximum of 100 subforms
-        if (newIndex >= 100) {
+        if (newIndex >= 7) {
           console.log('[WARNING] Reached maximum number of elements');
           return;
         }
@@ -239,6 +239,7 @@
   </head>
 
  <body>
+  {{ message }}
   <form action="" method="POST">
     {{ form.hidden_tag() }}
     <dl>
@@ -348,13 +349,13 @@
   <div id="workingday-_-form" class="is-hidden" data-index="_">
     <label for="workingdays-_-day">Day</label>
     <select id="workingdays-_-day" name="workingdays-_-day">
-      <option value="1">monday</option>
-      <option value="2">tuesday</option>
-      <option value="3">wednesday</option>
-      <option value="4">thursday</option>
-      <option value="5">friday</option>
-      <option value="6">saturday</option>
-      <option value="7">sunday</option>
+      <option value="monday">monday</option>
+      <option value="tuesday">tuesday</option>
+      <option value="wednesday">wednesday</option>
+      <option value="thursday">thursday</option>
+      <option value="friday">friday</option>
+      <option value="saturday">saturday</option>
+      <option value="sunday">sunday</option>
     </select>
 
     <label for="workingdays-_-work_shifts">Work Shifts</label>

@@ -1,0 +1,523 @@
+openapi: 3.0.1
+info:
+  title: Booking Service API
+  description: Reservation and Seat from GoOutSafe with Microservices
+  version: "0.1"
+servers:
+- url: /
+paths:
+  /reservations: 
+    get:
+      tags:
+        - All reservations
+      summary: Get all the reservations
+      operationId: reservation.views.reservation.get_all_reservations
+      parameters:
+        - in: query
+          name: param
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+                example: 1
+              restaurant_id:
+                type: integer
+                example: 1
+              start:
+                type: string
+                example: '2020-11-20T12:00'
+              end:
+                type: string
+                example: '2020-11-30T12:00'
+            additionalProperties: false
+          style: form
+          explode: true
+      responses:
+        200:
+          description: Return all reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        
+    put:
+      tags:
+        - Create reservation
+      summary: Create a reservation
+      operationId: reservation.views.reservation.create_reservation
+      requestBody:
+        description: Reservation to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        200:
+          description: Reservation successfully placed
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Reservation successfully placed
+        403:
+          description: Reservation not placed
+          content: 
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "The restaurant is not available this day at this hour"
+                status: 403
+                title: "Reservation not placed"
+                type: "about:blank"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Delete all reservations for a restaurant or user
+      summary: Delete all reservations for a restaurant or user 
+      operationId: reservation.views.reservation.delete_reservations
+      requestBody:
+        description: Unique ID of the restaurants restaurant or user
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  example: 1
+                restaurant_id:
+                  type: integer
+                  example: 1
+                restaurant_name:
+                  type: string
+                  example: 'name'
+      responses:
+        200:
+          description: Restaurant reservations deleted
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reservations/{reservation_id}:
+    get:
+      tags:
+        - One specific reservation
+      summary: Get the reservation with this ID
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+          example: 1
+      operationId: reservation.views.reservation.get_reservation
+      responses:
+        200:
+          description: Return the reservation with this ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reservation:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Delete this reservation
+      summary: Delete this reservation
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+          example: 1
+      operationId: reservation.views.reservation.delete_reservation
+      responses:
+        200:
+          description: The reservation is deleted
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Edit this reservation
+      summary: Edit the reservation with this ID
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+          example: 1
+      operationId: reservation.views.reservation.edit_reservation
+      requestBody:
+        description: Reservation to edit
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditReservationRequest'
+      responses:
+        200:
+          description: Reservation successfully edited
+          content: {}
+        404:
+          description: There is not a reservation with this ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Request body is not valid JSON"
+                status: 400
+                title: "Bad Request"
+                type: "about:blank"
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        
+    
+
+  /reservations/{reservation_id}/entrances:
+    
+    post:
+      tags:
+        - Confirm the entrances for this reservation
+      summary: Confirm the entrances for this reservation
+      parameters:
+        - in: path
+          name: reservation_id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the reservation
+          example: 1
+      operationId: reservation.views.reservation.confirm_participants
+      responses:
+        200:
+          description: The entrances are updated
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: The entrances are updated
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'   
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contact_tracing:
+    put:
+      tags:
+        - contactTracing
+      summary: Do contact tracing
+      operationId: reservation.views.reservation.do_contact_tracing
+      requestBody:
+        description: Marked as positive email and date
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - start_date
+                - email
+              properties:
+                start_date:
+                  type: string
+                  example: "11/12/2020"
+                  description: date of positivity
+                  #pattern: '^\d{2}/\d{2}/\d{4}$'
+                email:
+                  type: string
+                  example: "user@example.com"
+
+      responses:
+        200:
+          description: Contact tracing completed correctly
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Contact tracing completed correctly
+
+components:
+  schemas:
+    Error:
+      required:
+      - message
+      properties:
+        message:
+          type: string
+          example: You are not allowed to this feature
+
+    Reservation:
+      required:
+      - booker_id
+      - restaurant_id
+      - table_id
+      - seats
+      - places
+      - date
+      - cancelled
+      type: object
+      properties:
+        id:
+          minimum: 1
+          type: integer
+          description: Unique identifier
+          readOnly: true
+          example: 1
+        booker_id:
+          minimum: 1
+          type: integer
+          readOnly: true
+          example: 1
+        restaurant_id:
+          minimum: 1
+          type: integer
+          readOnly: true
+          example: 1
+        seats:
+          type: Seat
+          readOnly: true
+          $ref: '#/components/schemas/Seat'
+        places:
+          minimum: 1
+          type: integer
+          readOnly: true
+          example: 2
+        table_id:
+          minimum: 1
+          type: integer
+          readOnly: true
+          example: 1
+        date:
+          type: date
+          readOnly: true
+          example: "12/10/2020 12:00"
+        cancelled:
+          type: string
+          readOnly: true
+          example: null
+
+    Seat:
+      required:
+      - reservation_id
+      - guests_email
+      - confirmed
+      type: object
+      properties:
+        id:
+          minimum: 1
+          type: integer
+          description: Unique identifier
+          readOnly: true
+          example: 1
+        reservation_id:
+          minimum: 1
+          type: integer
+          readOnly: true
+          example: 1
+        guests_email:
+          type: string
+          readOnly: true
+          example: test@test.com
+        confirmed:
+          minimum: 1
+          type: boolean
+          readOnly: false
+          example: false    
+
+    ReservationRequest:
+      required:
+      - booker_id
+      - booker_email
+      - restaurant_id
+      - places
+      - date
+      - time
+      type: object
+      properties:
+        booker_id:
+          minimum: 1
+          type: integer
+          writeOnly: true
+          example: 1
+        booker_email:
+          minimum: 1
+          type: string
+          writeOnly: true
+          example: "test@test.com"
+        restaurant_id:
+          minimum: 1
+          type: integer
+          writeOnly: true
+          example: 1
+        places:
+          minimum: 1
+          type: integer
+          writeOnly: false
+          example: 2
+        date:
+          type: string
+          writeOnly: true
+          example: "21/11/2020"
+        time:
+          type: string
+          writeOnly: true
+          example: "12:00"
+
+    EditReservationRequest:
+      required:
+      - places
+      - seats_email
+      - booker_email
+      - date
+      - time
+      type: object
+      properties:
+        places:
+          minimum: 1
+          type: integer
+          writeOnly: true
+          example: 3
+        seats_email:
+          minimum: 1
+          type: array
+          writeOnly: true
+          example: [{'guest_email':'test2@test.com'}, {'guest_email':'test3@test.com'}]
+        booker_email:
+          minimum: 1
+          writeOnly: true
+          example: 'test@test.com'
+        date:
+          minimum: 1
+          type: string
+          writeOnly: true
+          example: "22/11/2020"
+        time:
+          minimum: 1
+          type: string
+          writeOnly: true
+          example: "13:00"
