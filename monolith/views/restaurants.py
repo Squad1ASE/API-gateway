@@ -20,9 +20,9 @@ from datetime import timedelta
 from sqlalchemy import or_
 import requests
 
-RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
 RESERVATIONS_SERVICE = "http://0.0.0.0:5060/"
-REQUEST_TIMEOUT_SECONDS = 1
+REQUEST_TIMEOUT_SECONDS = 2
 
 restaurants = Blueprint('restaurants', __name__)
 
@@ -513,6 +513,8 @@ def search_POST():
         if reply.status_code != 200:
             return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
+        restlat = 43.71
+        restlon = 10.40
         if len(reply_json) != 0:
             restlat = reply_json[0]['lat']
             restlon = reply_json[0]['lon']

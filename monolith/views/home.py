@@ -7,8 +7,8 @@ import requests
 
 home = Blueprint('home', __name__)
 
-RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
-REQUEST_TIMEOUT_SECONDS = 1
+RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
+REQUEST_TIMEOUT_SECONDS = 2
 
 @home.route('/')
 def index():
@@ -63,7 +63,6 @@ def index():
 
 
         if current_user.role == 'owner':
-            return render_template("homepage_info.html", notifications=current_user.notification, restaurants=restaurants) 
             
             try:
 

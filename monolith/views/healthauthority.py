@@ -12,7 +12,7 @@ import requests
 healthauthority = Blueprint('healthauthority', __name__)
 
 USER_SERVICE = 'http://127.0.0.1:5060/'
-REQUEST_TIMEOUT_SECONDS = 1
+REQUEST_TIMEOUT_SECONDS = 2
 
 @healthauthority.route('/patient', methods=['GET'])
 @login_required

@@ -255,7 +255,7 @@ def send_notifications():
         send_email('notifica di quarantena', notification.message, [user.email])
 
     return count
-'''
+
 
 def send_email(subject, body, recv):
     """Background task to send an email with Flask-Mail."""

@@ -18,7 +18,7 @@ import requests
 users = Blueprint('users', __name__)
 
 USER_SERVICE = 'http://127.0.0.1:5060/'
-REQUEST_TIMEOUT_SECONDS = 1
+REQUEST_TIMEOUT_SECONDS = 2
 
 @users.route('/users')
 @login_required
@@ -117,6 +117,7 @@ def edit_user_POST():
         if reply.status_code == 200:
             # TODO this doesn't change the current_user phone
             current_user.phone = edit_dict['user_new_phone']
+            db.session.commit()
             return render_template('error.html', message="The information has been updated", redirect_url="/")
         else:
             form.old_password.errors.append(reply_json['detail'])
