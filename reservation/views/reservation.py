@@ -10,7 +10,7 @@ import connexion
 import ast
 import reservation.app
 #from app.application import delete_restaurant_reservations_task
-from reservation.api_call import get_restaurant, get_restaurant_name, put_notification
+from reservation.api_call import get_restaurant, put_notification
 import dateutil.parser
 from sqlalchemy import or_, and_
 
@@ -233,24 +233,21 @@ def delete_reservations():
             #print('cancel user reservation', reservation.cancelled)
             db_session.commit()
         return "User reservations deleted"
-    elif 'restaurant_id' in body:
-        if 'restaurant_name' not in body:
-            return connexion.problem('400', 'Error', 'Restaurant name required')
-        else:
-            restaurant_id = body['restaurant_id']
-            restaurant_name = body['restaurant_name']
+    elif 'restaurant_id' in body and 'restaurant_name' in body:
+        restaurant_id = body['restaurant_id']
+        restaurant_name = body['restaurant_name']
 
-            reservations = db_session.query(Reservation).filter(
-                Reservation.restaurant_id == int(restaurant_id),
-            ).all()
+        reservations = db_session.query(Reservation).filter(
+            Reservation.restaurant_id == int(restaurant_id),
+        ).all()
 
-            for reservation in reservations:
-                reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
-                db_session.commit()
+        for reservation in reservations:
+            reservation.cancelled='restaurant_deleted'+' '+str(restaurant_name)
+            db_session.commit()
 
-            return "Restaurant reservations deleted"
+        return "Restaurant reservations deleted"
     else:
-        return connexion.problem('400', 'Error', 'You must specify an ID')
+        return connexion.problem('400', 'Error', 'Incorrect parameters')
 
     
 #edit the reservation with specific id
@@ -427,7 +424,7 @@ def do_contact_tracing():
         #print(date)
         response = get_restaurant(restaurant_id)
         if response.status_code != 200:
-            return connexion.problem(500,'Internal server error','restaurant microservice unable to respond')
+            return connexion.problem(500,'Internal server error','Restaurant microservice unable to respond')
         restaurant= response.json()
         info=dict(date=date,restaurant_id=restaurant_id,avg_time_of_stay=restaurant['avg_time_of_stay'],owner_id=restaurant['owner_id'],restaurant_name=restaurant['name'])
         user_reservations.append(info)

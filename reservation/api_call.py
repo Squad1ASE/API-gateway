@@ -18,16 +18,6 @@ def get_restaurant(restaurant_id):
     finally:
         return reply
 
-def get_restaurant_name(restaurant_id):
-    reply = object
-    try:
-        reply=requests.get(API_GATEWAY_SERVICE+'stub/restaurant/name', timeout=10)
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        reply = Response()
-        reply.status_code = 500
-    finally:
-        return reply
-
 def put_notification(notification):
     reply = object
     try:

@@ -8,7 +8,9 @@ from unittest.mock import patch
 import datetime
 from datetime import timedelta
 
-from reservation.views.reservation import (get_restaurant, get_restaurant_name, create_reservation, edit_reservation,
+import reservation.api_call
+
+from reservation.views.reservation import (get_restaurant, create_reservation, edit_reservation,
                                             confirm_participants, delete_reservation, delete_reservations, put_notification)
 from reservation.app import delete_reservations_task, hello
 from reservation.utilities import (edit_reservation_EP, restaurant_example, confirm_participants_EP, participants_example,
@@ -382,17 +384,11 @@ def test_component_reservations(mock1, test_app):
     
 
 @patch('reservation.views.reservation.get_restaurant')
-@patch('reservation.views.reservation.get_restaurant_name')
-def test_component_delete(mock1, mock2, test_app):
-    ok_mock2 = mock.MagicMock()
+def test_component_delete(mock1, test_app):
     ok_mock1 = mock.MagicMock()
-    type(ok_mock2).status_code = mock.PropertyMock(return_value=200)
-    ok_mock2.json.return_value = restaurant_h24_example['name']
-    mock2.return_value = ok_mock1
-    ok_mock = mock.MagicMock()
     type(ok_mock1).status_code = mock.PropertyMock(return_value=200)
     ok_mock1.json.return_value = restaurant_h24_example
-    mock1.return_value = ok_mock2
+    mock1.return_value = ok_mock1
     app, test_client = test_app
     # delete the reservation
     assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
@@ -442,6 +438,85 @@ def test_contact_tracing(mock1, mock2, test_app):
     assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 200
     assert contact_tracing_EP(test_client, contact_tracing_nomail_example).status_code == 400
     assert contact_tracing_EP(test_client, contact_tracing_nodate_example).status_code == 400
+    db_session.delete(res)
+    db_session.commit()
+
+def test_ct_nomock(test_app):
+    app, test_client = test_app
+    reservation = Reservation()
+    reservation.booker_id = 3
+    reservation.restaurant_id = 2
+    reservation.date = datetime.datetime.today() + timedelta(days=1)
+    reservation.places = 2
+    reservation.table_id = 1
+    db_session.add(reservation)
+    db_session.commit()
+    reservation = Reservation()
+    reservation.booker_id = 4
+    reservation.restaurant_id = 2
+    reservation.date = datetime.datetime.today() - timedelta(days=1)
+    reservation.places = 2
+    reservation.table_id = 1
+    db_session.add(reservation)
+    db_session.commit()
+    seat = Seat()
+    seat.reservation_id = reservation.id  
+    seat.guests_email = 'userexample1@test.com'
+    seat.confirmed = True
+    reservation.seats.append(seat)
+    # add a participants and send notification to it and to owner of the restaurant
+    seat = Seat()
+    seat.reservation_id = reservation.id  
+    seat.guests_email = 'test@test.com'
+    seat.confirmed = True
+    reservation.seats.append(seat)
+    db_session.commit()
+    assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 500
+    db_session.delete(reservation)
+    db_session.commit()
+
+@patch('reservation.views.reservation.get_restaurant')
+def test_ct_1_mock(mock2, test_app):
+    app, test_client = test_app
+    ok_mock2 = mock.MagicMock()
+    type(ok_mock2).status_code = mock.PropertyMock(return_value=200)
+    ok_mock2.json.return_value = restaurant_h24_example
+    mock2.return_value = ok_mock2
+    assert create_reservation_EP(test_client, reservation_future_example).status_code == 200
+    assert create_reservation_EP(test_client, reservation_yesterday_example).status_code == 200
+    res = db_session.query(Reservation).filter_by(booker_id = reservation_yesterday_example['booker_id']).first()
+    # add a participants and send notification to it and to owner of the restaurant
+    res.seats[0].confirmed = True
+    seat = Seat()
+    seat.reservation_id = res.id  
+    seat.guests_email = 'test@test.com'
+    seat.confirmed = True
+    res.seats.append(seat)
+    db_session.commit()
+    assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 500
+    db_session.delete(res)
+    db_session.commit()
+    '''
+    reservation = Reservation()
+    reservation.booker_id = 1
+    reservation.restaurant_id = 1
+    reservation.date = datetime.datetime.now()#.strptime('%d/%m/%Y %H:%M')
+    reservation.places = 2
+    reservation.table_id = 1
+    db_session.add(reservation)
+    db_session.commit()
+    seat = Seat()
+    seat.reservation_id = reservation.id  
+    seat.guests_email = 'test@test.com'
+    seat.confirmed = True
+    reservation.seats.append(seat)
+    reservation.seats[0].confirmed = True
+    db_session.commit()
+    assert contact_tracing_EP(test_client, contact_tracing_example).status_code == 500
+    db_session.delete(reservation)
+    db_session.commit()
+    '''
+    
 
 @patch('reservation.app.put_notification')
 def test_task_celery(mock1, test_app):

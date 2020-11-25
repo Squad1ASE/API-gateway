@@ -16,30 +16,6 @@ db_session = scoped_session(sessionmaker(autocommit=False, autoflush=False,
 def init_db():
     try:
         db.metadata.create_all(bind=engine)
-        '''
-        q = db_session.query(Reservation).filter(Reservation.id == 1).first()
-        if q is None:
-            example = Reservation()
-            example.booker_id = 1
-            example.restaurant_id = 1
-            example.table_id = 1
-            example.date = datetime.datetime.strptime("10/10/2020 12:00", "%d/%m/%Y %H:%M")
-            #datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
-            example.places = 2
-            db_session.add(example)
-            db_session.commit()
-        q = db_session.query(Seat).filter(Seat.id == 1).first()
-        if q is None:
-            example = Seat()
-            example.reservation_id = 1
-            example.guests_email = 'test@test.com'
-            example.confirmed = False
-            r = db_session.query(Reservation).filter(Reservation.id == 1).first()
-            r.seats.append(example)
-            db_session.add(example)
-            db_session.commit()
-        '''
-
     except Exception as e:
         print(e)
     
@@ -51,7 +27,7 @@ class Reservation(db):
     restaurant_id = Column(Integer)
     table_id = Column(Integer)
     date = Column(DateTime)
-    cancelled = Column(String, default=None) #restaurant_deleted/user_deleted/reservation_deleted
+    cancelled = Column(String, default=None)
     places = Column(Integer)
     seats = relationship("Seat", cascade="all,delete,delete-orphan", backref="reservation")
 
@@ -60,10 +36,8 @@ class Reservation(db):
         for k, v in self.__dict__.items():
             if k[0] != '_':
                 if isinstance(v, datetime.datetime):
-                    #temp_dict.append_entry(k, v.__str__())
                     temp_dict[k] = v.__str__()
                 else:
-                    #temp_dict.append_entry(k, v)
                     temp_dict[k] = v
         seats = []
         for seat in self.seats:
@@ -71,7 +45,6 @@ class Reservation(db):
         temp_dict['seats'] = seats
 
         return temp_dict
-        #return dict([(k, v) for k, v in self.__dict__.items() if k[0] != '_'])
 
 
 class Seat(db):
@@ -79,7 +52,6 @@ class Seat(db):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     reservation_id = Column(Integer, ForeignKey('reservation.id'))
-    #reservation = relationship('Reservation', foreign_keys='Seat.reservation_id', backref=backref('seats', cascade="all, delete-orphan"))
     guests_email = Column(String)  
     confirmed = Column(Boolean, default=False)
 
