@@ -9,7 +9,7 @@ import time
 
 class LoginForm(FlaskForm):
     email = f.StringField('email', validators=[DataRequired(), Length(1, 64), Email()])    
-    password = f.PasswordField('password', validators=[DataRequired(), Length(1,8)])
+    password = f.PasswordField('password', validators=[DataRequired(), Length(8,20)])
     display = ['email', 'password']
 
 
@@ -18,7 +18,7 @@ class UserForm(FlaskForm):
     phone = f.StringField('phone', validators=[DataRequired()])
     firstname = f.StringField('firstname', validators=[DataRequired()])
     lastname = f.StringField('lastname', validators=[DataRequired()])
-    password = f.PasswordField('password', validators=[DataRequired(), Length(1,8)])
+    password = f.PasswordField('password', validators=[DataRequired(), Length(8,20)])
     dateofbirth = f.DateField('dateofbirth', format='%d/%m/%Y')
     role = f.StringField('role', validators=[DataRequired()])
     display = ['email', 'phone', 'firstname', 'lastname', 'password', 'dateofbirth', 'role']
@@ -26,8 +26,8 @@ class UserForm(FlaskForm):
 
 class EditUserForm(FlaskForm):
     phone = f.StringField('phone', validators=[DataRequired()])
-    old_password = f.PasswordField('old_password', validators=[DataRequired(), Length(1,8)])
-    new_password = f.PasswordField('new_password', validators=[DataRequired(), Length(1,8)])
+    old_password = f.PasswordField('old_password', validators=[DataRequired(), Length(8,20)])
+    new_password = f.PasswordField('new_password', validators=[Length(8,20)])
     display = ['phone', 'old_password', 'new_password']
     
 

@@ -56,13 +56,14 @@ def index():
                 possible_infected_sorted = sorted(possible_infected_not_sorted, key=lambda k: k['date']) 
             return render_template("homepage_info.html", possible_infected=possible_infected_sorted) 
 
-          
+        # TODO fare richiesta a USER per le notifiche ogni volta che si va in homepage
+        # andrebbe quindi cambiato il fatto che le notifiche sono passate al current_user durante login
         if current_user.role == 'customer':
-            notifications = db.session.query(Notification).filter(Notification.user_id == current_user.id).all()
-            return render_template("homepage_info.html", notifications=notifications)
+            return render_template("homepage_info.html", notifications=current_user.notification)
 
 
         if current_user.role == 'owner':
+            return render_template("homepage_info.html", notifications=current_user.notification, restaurants=restaurants) 
             
             try:
 
@@ -71,9 +72,9 @@ def index():
 
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
                 message = "Something gone wrong, restaurants list not available, try again later"
-                return render_template("homepage_info.html", message=message) 
+                return render_template("homepage_info.html", message=message, notifications=current_user.notification) 
 
-            return render_template("homepage_info.html", restaurants=reply_json) 
+            return render_template("homepage_info.html", restaurants=reply_json, notifications=current_user.notification) 
     else:
         return render_template("homepage.html") 
 

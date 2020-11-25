@@ -49,7 +49,7 @@ def create_app():
     # TODO THIS SECTION MUST BE REMOVED, ONLY FOR DEMO
     # already tested EndPoints are used to create examples
     app.config['WTF_CSRF_ENABLED'] = False
-
+    '''
     with app.app_context():
         
         q = db.session.query(User).filter(User.email == 'admin@admin.com')
@@ -96,7 +96,7 @@ def create_app():
         
 
     app.config['WTF_CSRF_ENABLED'] = True
-
+    '''
     
 
     return app
@@ -191,22 +191,6 @@ def del_inactive_users():
                 user_to_delete.password = 'pw'
                 user_to_delete.dateofbirth = None 
                 db.session.commit()
-            # a cosa serve questa cosa?? 
-            else:
-                for r in rs:
-                    # lascio queste stampe
-                    #print(r.date)
-                    #print(pre_date)
-                    #print(r.date==pre_date) 
-                    if r.date.date() == pre_date:
-                        user_to_delete.email = 'invalid_email' + str(user_to_delete.id) + '@a.b'
-                        user_to_delete.phone = 0
-                        user_to_delete.firstname = 'Anonymous'
-                        user_to_delete.lastname = 'Anonymous'
-                        user_to_delete.password = 'pw'
-                        user_to_delete.dateofbirth = None 
-                        db.session.commit()
-            
 
         # cosi la reservation.date tiene conto dell'orario e fa perdere 
         # le reservations con esattamente passati i 14 giorni
@@ -291,3 +275,4 @@ def get_mail_object():
     if mail is None:
         mail = Mail(app)
     return mail
+'''
