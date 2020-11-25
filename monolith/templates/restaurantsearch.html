@@ -62,7 +62,7 @@
   <ul>
     {% for restaurant in restaurants: %}
     <li>
-    Name: {{restaurant.name}}        Phone: {{restaurant.phone}}        Likes: {{restaurant.likes}}        Rating: {{restaurant.avg_rating}}        LAT/LON: {{restaurant.lat}}/{{restaurant.lon}}
+    Name: {{restaurant.name}}        Phone: {{restaurant.phone}}        Likes: {{restaurant.likes}}        Rating: {{restaurant.avg_rating}}        LAT/LON: {{restaurant.lat}}/{{restaurant.lon}}        Cuisine types: {{restaurant.cuisine_type}}
     {% if current_user.is_authenticated %}
     <a href="/restaurants/{{restaurant.id}}">See Details!</a>
     {% endif %}

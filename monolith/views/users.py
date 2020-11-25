@@ -1,6 +1,5 @@
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import (db, User, Reservation, Restaurant, Seat,
-                               Quarantine, Notification, Like, Review, Table)
+from monolith.database import ( db, User, Quarantine, Notification)
 from monolith.auth import admin_required
 from flask_wtf import FlaskForm
 import wtforms as f
@@ -10,36 +9,43 @@ from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail, Ed
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
-from monolith.views.restaurants import restaurant_delete
-import requests
 import os
-
 import time
 from datetime import date
 from time import mktime
 from datetime import timedelta
-
+import json
+from monolith.json_converter import user_to_json
+import requests
 
 users = Blueprint('users', __name__)
 
-RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
-#RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
-RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
-
+USER_SERVICE = 'http://127.0.0.1:5070/'
+RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
+#RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
+REQUEST_TIMEOUT_SECONDS = 2
 
 @users.route('/users')
 @login_required
 def _users():
     if (current_user.role != 'admin'):
-        return make_response(
-            render_template('error.html', message="You are not the admin! Redirecting to home page", redirect_url="/"),
-            403)
-    users = db.session.query(User)
-    return render_template("users.html", users=users)
+        return make_response(render_template('error.html', message="You are not the admin! Redirecting to home page", redirect_url="/"), 403)
+    
+    try:
+        reply = requests.get(USER_SERVICE+'users', timeout=REQUEST_TIMEOUT_SECONDS)
+        reply_json = reply.json()
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
+
+    if reply.status_code == 200:
+        return render_template("users.html", users=reply_json)
+    else:
+        return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
 
-@users.route('/create_user', methods=['GET', 'POST'])
-def create_user():
+@users.route('/users/create', methods=['GET'])
+def create_user_GET():
     if current_user is not None and hasattr(current_user, 'id'):
         return make_response(
             render_template('error.html', message="You are already logged! Redirecting to home page", redirect_url="/"),
@@ -47,99 +53,106 @@ def create_user():
 
     form = UserForm()
 
-    if request.method == 'POST':
-
-        if form.validate_on_submit():
-
-            new_user = User()
-            form.populate_obj(new_user)
-            new_user.role = request.form['role']
-            check_already_register = db.session.query(User).filter(User.email == new_user.email).first()
-
-            if (check_already_register is not None):
-                # already registered
-                return render_template('create_user.html', form=form), 403
-
-            new_user.set_password(form.password.data)  # pw should be hashed with some salt
-
-            if new_user.role != 'customer' and new_user.role != 'owner':
-                return make_response(render_template('error.html',
-                                                     message="You can sign in only as customer or owner! Redirecting to home page",
-                                                     redirect_url="/"), 403)
-
-            db.session.add(new_user)
-            db.session.commit()
-            return redirect('/')
-        else:
-            # invalid form
-            return make_response(render_template('create_user.html', form=form), 400)
-
     return render_template('create_user.html', form=form)
 
+@users.route('/users/create', methods=['POST'])
+def create_user_POST():
 
-@users.route('/edit_user_informations', methods=['GET', 'POST'])
-@login_required
-def edit_user():
-    form = EditUserForm()
-    email = current_user.email
-    user = db.session.query(User).filter(User.email == email).first()
+    if current_user is not None and hasattr(current_user, 'id'):
+        return make_response(render_template('error.html', message="You are already logged! Redirecting to home page", redirect_url="/"), 403)
 
-    if request.method == 'POST':
+    form = UserForm(request.form)
 
-        if form.validate_on_submit():
+    if form.validate_on_submit():
+            
+        user = user_to_json(request.form.to_dict())
 
-            password = form.data['old_password']
+        try:
+            reply = requests.put(USER_SERVICE+'users', json=user, timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
 
-            if (user is not None and user.authenticate(password)):
-                user.phone = form.data['phone']
-                user.set_password(form.data['new_password'])
-                db.session.commit()
-                return redirect('/logout')
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
-            else:
-                form.old_password.errors.append("Invalid password.")
-                return make_response(render_template('edit_user.html', form=form, email=current_user.email), 401)
-
+        if reply.status_code == 200:
+            return render_template('error.html', message="User has been created", redirect_url="/")
         else:
-            # invalid form
-            return make_response(render_template('edit_user.html', form=form, email=current_user.email), 400)
+            return make_response(render_template('create_user.html', form=form, message=reply_json['detail']), reply.status_code)
+    else:
+        # invalid form
+        return make_response(render_template('create_user.html', form=form), 400)
+
+
+@users.route('/users/edit', methods=['GET'])
+@login_required
+def edit_user_GET():
+
+    form = EditUserForm()
+
+    form.phone.data = current_user.phone
+    return render_template('edit_user.html', form=form, email=current_user.email)
+
+@users.route('/users/edit', methods=['POST'])
+@login_required
+def edit_user_POST():
+
+    if current_user is None:
+        return make_response(render_template('error.html', message="You must be logged first! Redirecting to home page", redirect_url="/"), 403)
+
+    form = EditUserForm(request.form)
+
+    if form.validate_on_submit():
+
+        edit_dict = dict(
+            current_user_email=current_user.email,
+            current_user_old_password=form.data['old_password'],
+            current_user_new_password=form.data['new_password'],
+            user_new_phone=form.data['phone']
+        )
+                
+        if(edit_dict['user_new_phone'] == current_user.phone and form.data['old_password'] == form.data['new_password']):
+            return redirect('/')
+
+        try:
+            reply = requests.post(USER_SERVICE+'users', json=edit_dict, timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
+
+        if reply.status_code == 200:
+            current_user.phone = edit_dict['user_new_phone']
+            db.session.commit()
+            return render_template('error.html', message="The information has been updated", redirect_url="/")
+        else:
+            form.old_password.errors.append(reply_json['detail'])
+            return make_response(render_template('edit_user.html', form=form, email=current_user.email), reply.status_code)
 
     else:
-        form.phone.data = user.phone
-        return render_template('edit_user.html', form=form, email=current_user.email)
+        # invalid form
+        return make_response(render_template('edit_user.html', form=form, email=current_user.email), 400)
 
 
-@users.route('/delete_user', methods=['GET', 'DELETE'])
+@users.route('/users/delete', methods=['GET'])
 @login_required
 def delete_user():
-    if (current_user.role == 'ha'):
-        return make_response(render_template('error.html',
-                                             message="HA not allowed to sign-out!",
-                                             redirect_url="/"), 403)
 
-    user_to_delete = db.session.query(User).filter(User.id == current_user.id).first()
+    data = dict(current_user_email=current_user.email)
 
-    if user_to_delete.role == 'owner':
-        # delete first the restaurant and then treat it as a customer
-        restaurants = db.session.query(Restaurant).filter(Restaurant.owner_id == user_to_delete.id).all()
-        for res in restaurants:
-            restaurant_delete(res.id)
+    try:
+        reply = requests.delete(USER_SERVICE+'users', json=data, timeout=REQUEST_TIMEOUT_SECONDS)
+        reply_json = reply.json()
+
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
+
+    if reply.status_code == 200:
+        return render_template('error.html', message="You account is going to be deleted", redirect_url="/logout")
     else:
-        res = requests.delete('http://localhost:5100/reservations/users/' + str(user_to_delete.id)).status_code
-        if res == 200:
-            print('user reservations deleted correctly')
-        else:
-            print(str(res))
-
-    user_to_delete.is_active = False
-    db.session.commit()
-
-    return make_response(render_template('error.html',
-                                         message="Successfully signed out!",
-                                         redirect_url="/logout"), 200)
+        return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
 
 
-@users.route('/users/reservation_list', methods=['GET'])
+@users.route('/users/reservation', methods=['GET'])
 @login_required
 def reservation_list():
     if (current_user.role == 'ha' or current_user.role == 'owner'):
@@ -274,7 +287,7 @@ def editreservation(reservation_id):
                 form.guest.append_entry(email_form)       
                 form.guest[idx].guest_email.data = seat['guests_email']
 
-        return render_template('user_reservation_edit_NUOVA.html', form=form, base_url="http://127.0.0.1:5000/users/editreservation/"+reservation_id)
+        return render_template('user_reservation_edit_NUOVA.html', form=form)
 
     
  

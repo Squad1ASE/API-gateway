@@ -1,5 +1,5 @@
 from flask import Blueprint, redirect, render_template, request, make_response, url_for
-from monolith.database import db, User, Quarantine, Seat, Reservation, Notification, Restaurant, Table
+from monolith.database import db, User, Quarantine, Notification
 from monolith.auth import admin_required
 from monolith.forms import GetPatientInformationsForm
 from flask_login import (current_user, login_user, logout_user,
@@ -7,106 +7,97 @@ from flask_login import (current_user, login_user, logout_user,
 import datetime
 from datetime import timedelta
 from sqlalchemy import or_, and_
+import requests
 
 healthauthority = Blueprint('healthauthority', __name__)
 
+USER_SERVICE = 'http://127.0.0.1:5060/'
+REQUEST_TIMEOUT_SECONDS = 2
 
-@healthauthority.route('/patient_informations', methods=['GET','POST'])
+@healthauthority.route('/patient', methods=['GET'])
 @login_required
-def get_patient_informations():
+def get_patient_informations_GET():
     if(current_user.role != "ha"):
         return make_response(render_template('error.html', message="Access denied!", redirect_url="/"), 403)
 
     form = GetPatientInformationsForm()
 
-    if request.method == 'POST':
+    if 'go_back_button' in request.form and request.form['go_back_button'] == 'go_back':
+        return redirect('/patient')
 
-        if form.validate_on_submit():
-            patient = User()
-            form.populate_obj(patient)
-
-            getuser = db.session.query(User).filter(User.email == patient.email).first()
-            # email isn't correct, user doesn't exist
-            if(getuser is None):
-                form.email.errors.append("Wrong email. User doesn't exist")
-                return render_template('generic_template.html', form=form), 404
+    if 'email' in request.args:
+        html = 'patient_informations.html'
+        if request.args.get("state") == "patient already under observation":
+            html = 'patient_informations_nomarkbutton.html'
                 
-            elif(getuser.role == 'ha' or getuser.role == 'admin'):
-                form.email.errors.append("You can not mark this user!")
-                return render_template('generic_template.html', form=form), 403
+        return render_template(html, email=request.args.get("email"),
+            firstname=request.args.get("firstname"),
+            lastname=request.args.get("lastname"),
+            dateofbirth=request.args.get("dateofbirth"),
+            state=request.args.get("state"),
+            startdate=request.args.get("startdate"),
+            enddate=request.args.get("enddate")
+        )
 
-            # email correct, show patient's informations 
-            else:
-                getuserquarantine_status = db.session.query(Quarantine).filter(Quarantine.user_id == getuser.id and Quarantine.in_observation == True).first()
-                # patient is in observation
-                if getuserquarantine_status is not None:
-                    startdate = getuserquarantine_status.start_date
-                    enddate = getuserquarantine_status.end_date
-                    state = "patient already under observation"
-                else:
-                    startdate = datetime.date.today()
-                    enddate = startdate + datetime.timedelta(days=14)
-                    state = "patient next under observation"
+    return render_template('generic_template.html', form=form)
 
-                return redirect(url_for('.get_patient_informations',    email=getuser.email,
-                                                                        firstname=getuser.firstname,
-                                                                        lastname=getuser.lastname,
-                                                                        dateofbirth=getuser.dateofbirth,
-                                                                        state=state,
-                                                                        startdate=startdate,
-                                                                        enddate=enddate
-                                                                        ))
-        #getuser = db.session.query(User).filter(User.email == request.args.get("email")).first()
-        #getuserquarantine_status = db.session.query(Quarantine).filter(Quarantine.user_id == getuser.id and Quarantine.in_observation == True).first()
-        #if request.form['mark_positive_button'] == 'mark_positive' and getuserquarantine_status is None:
-        if 'mark_positive_button' in request.form and request.form['mark_positive_button'] == 'mark_positive':
-                
-            getuser = db.session.query(User).filter(User.email == request.args.get("email")).first()
+@healthauthority.route('/patient', methods=['POST'])
+@login_required
+def get_patient_informations_POST():
 
-            startdate = datetime.date.today()
-            enddate = startdate + datetime.timedelta(days=14)
+    if(current_user.role != "ha"):
+        return make_response(render_template('error.html', message="Access denied!", redirect_url="/"), 403)
 
-            quarantine = Quarantine()
-            quarantine.user_id = getuser.id
-            quarantine.start_date = startdate
-            quarantine.end_date = enddate
-            quarantine.in_observation = True
+    form = GetPatientInformationsForm(request.form)
 
-            db.session.add(quarantine)
-            db.session.commit()
+    if form.validate_on_submit():
 
+        try:
+
+            reply = requests.get(USER_SERVICE+'patient?email='+form.data['email'], timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
+
+        if reply.status_code != 200:
+            form.email.errors.append(reply_json['detail'])
+            return make_response(render_template('generic_template.html', form=form), reply.status_code)
+
+        # email correct, show patient's informations 
+        else:
+
+            return redirect(url_for('.get_patient_informations_POST',    email=reply_json['email'],
+                                                                    phone=reply_json['phone'],
+                                                                    firstname=reply_json['firstname'],
+                                                                    lastname=reply_json['lastname'],
+                                                                    dateofbirth=reply_json['dateofbirth'],
+                                                                    state=reply_json['state'],
+                                                                    startdate=reply_json['startdate'],
+                                                                    enddate=reply_json['enddate']
+                                                                    ))
+
+    if 'mark_positive_button' in request.form and request.form['mark_positive_button'] == 'mark_positive':
+
+        try:
+            reply = requests.put(USER_SERVICE+'patient?email='+request.args.get("email"), timeout=REQUEST_TIMEOUT_SECONDS)
+            reply_json = reply.json()
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                    return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
+
+        if reply.status_code != 200:
+            return make_response(render_template('error.html', message=reply_json['detail'], redirect_url="/"), reply.status_code)
+
+            '''
             # do contact tracing
             _do_contact_tracing(getuser, quarantine.start_date)
 
             # if the positive is in some future reservation (in the next 14 days) the owners of the restaurants concerned must be notified
             _check_future_reservations(getuser, quarantine.start_date)
-                
+            ''' 
             # this redirect isn't an error, it display that patient has been successfully marked positive
-            return make_response(render_template('error.html', message="Patient marked as positive", redirect_url="/"), 555)     
-
-    if 'go_back_button' in request.form and request.form['go_back_button'] == 'go_back':
-        return redirect('/patient_informations')
-
-    if 'email' in request.args:
-        getuser = db.session.query(User).filter(User.email == request.args.get("email")).first()
-        getuserquarantine_status = db.session.query(Quarantine).filter(Quarantine.user_id == getuser.id and Quarantine.in_observation == True).first()
-        
-        html = 'patient_informations.html'
-        if getuserquarantine_status is not None:
-            html = 'patient_informations_nomarkbutton.html'
-            
-        return render_template(html, email=request.args.get("email"),
-                                                            firstname=request.args.get("firstname"),
-                                                            lastname=request.args.get("lastname"),
-                                                            dateofbirth=request.args.get("dateofbirth"),
-                                                            state=request.args.get("state"),
-                                                            startdate=request.args.get("startdate"),
-                                                            enddate=request.args.get("enddate")
-                                                            )
-
-
-    return render_template('generic_template.html', form=form)
-
+        return make_response(render_template('error.html', message="Patient marked as positive", redirect_url="/"), 555)     
 
 
 def _do_contact_tracing(positive, start_date):

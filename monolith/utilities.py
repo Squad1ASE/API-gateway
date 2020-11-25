@@ -1,4 +1,4 @@
-from monolith.database import Restaurant, WorkingDay, User
+from monolith.database import User
 import datetime
 
 
@@ -175,6 +175,7 @@ def edit_user_EP(
 
 
 # --- UTILITIES RESTAURANT  ---
+'''
 restaurant_example = [
     { 
         'name':'Restaurant 1', 'lat':43.7216621, 'lon':10.4083723, 'phone':'111111', 
@@ -250,7 +251,7 @@ restaurant_h24_example = {
     'workingdays-5-day': WorkingDay.WEEK_DAYS(6), 'workingdays-5-work_shifts':"('00:00','23:59')",
     'workingdays-6-day': WorkingDay.WEEK_DAYS(7), 'workingdays-6-work_shifts':"('00:00','23:59')"
 }
-
+'''
 reservation_dates_example = [
     '09/11/2020',
     '10/11/2020',
@@ -375,6 +376,7 @@ reservations_example = [
 
 
 # recall: to call this function you must be logged in
+'''
 def create_restaurant_EP(test_client, data_dict=restaurant_example[0]):
     return test_client.post('/create_restaurant', data=data_dict, follow_redirects=True)
 
@@ -390,7 +392,7 @@ def restaurant_reservation_GET_EP(test_client, restaurant_id, table_id_reservati
 
 def restaurant_reservation_POST_EP(test_client, restaurant_id, table_id_reservation, date, guests, data):
     return test_client.post('/restaurants/'+restaurant_id+'/reservation?table_id='+str(table_id_reservation)+'&'+'guests='+str(guests)+'&'+'date='+date, data=data, follow_redirects=True)
-
+'''
 
 def create_review_EP(test_client, data_dict, rest_id):
     return test_client.post('/restaurants/reviews/'+str(rest_id), data=data_dict, follow_redirects=True)

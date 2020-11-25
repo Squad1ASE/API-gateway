@@ -1,14 +1,10 @@
 import os
 from flask import Flask
-from database import ( db, User, Restaurant, Table, WorkingDay,
-                                Reservation, Like, Seat, Review, 
-                                Dish, Quarantine, Notification )
+from monolith.database import db, User
 from monolith.views import blueprints
 from monolith.auth import login_manager
 from monolith.utilities import ( insert_ha, create_user_EP, user_login_EP, 
-                                user_logout_EP, create_restaurant_EP, customers_example, 
-                                restaurant_example, admin_example, health_authority_example, 
-                                restaurant_owner_example )
+                                user_logout_EP, customers_example, admin_example, health_authority_example)
 import datetime
 from datetime import timedelta, date
 
@@ -18,12 +14,15 @@ from flask_mail import Message, Mail
 
 
         
+RESTAURANT_SERVICE = "http://0.0.0.0:5060/"
+
 def create_app():
     app = Flask(__name__)
     app.config['WTF_CSRF_SECRET_KEY'] = 'A SECRET KEY'
     app.config['SECRET_KEY'] = 'ANOTHER ONE'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
-    #app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gooutsafe.db'
+    #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@postgres:5432/postgres'
+    #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///monolith.db"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     
@@ -49,7 +48,7 @@ def create_app():
     # TODO THIS SECTION MUST BE REMOVED, ONLY FOR DEMO
     # already tested EndPoints are used to create examples
     app.config['WTF_CSRF_ENABLED'] = False
-
+    '''
     with app.app_context():
         
         q = db.session.query(User).filter(User.email == 'admin@admin.com')
@@ -97,13 +96,12 @@ def create_app():
         
 
     app.config['WTF_CSRF_ENABLED'] = True
-
+    '''
     
 
     return app
 
+app=create_app()
 
-    app=create_app()
-
-    if __name__ == '__main__':
-        app.run(host='0.0.0.0')
+if __name__ == '__main__':
+  app.run(host='0.0.0.0')
