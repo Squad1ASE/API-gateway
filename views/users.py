@@ -1,11 +1,11 @@
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import ( db, User, Quarantine, Notification)
-from monolith.auth import admin_required
+from database import ( db, User, Quarantine, Notification)
+from auth import admin_required
 from flask_wtf import FlaskForm
 import wtforms as f
 from wtforms import Form
 from wtforms.validators import DataRequired, Length, Email, NumberRange
-from monolith.forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
+from forms import UserForm, EditUserForm, SubReservationPeopleEmail, EditReservationForm, EmailForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
@@ -15,15 +15,17 @@ from datetime import date
 from time import mktime
 from datetime import timedelta
 import json
-from monolith.json_converter import user_to_json
+from json_converter import user_to_json
 import requests
 
 users = Blueprint('users', __name__)
 
-USER_SERVICE = 'http://127.0.0.1:5060/'
-RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
-RESTAURANT_SERVICE = 'http://127.0.0.1:5070/'
-#RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
+#USER_SERVICE = 'http://127.0.0.1:5060/'
+#RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
+#RESTAURANT_SERVICE = 'http://127.0.0.1:5070/'
+RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
+USER_SERVICE = os.environ['USER_SERVICE']
+RESTAURANT_SERVICE = os.environ['RESTAURANT_SERVICE']
 REQUEST_TIMEOUT_SECONDS = 2
 
 @users.route('/users')
@@ -207,7 +209,7 @@ def deletereservation(reservation_id):
         return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
     if reservation.status_code != 200:
-        return make_response(render_template('error.html', message=reservation_json['detail'], redirect_url="/users/reservation_list"), reservation.status_code)
+        return make_response(render_template('error.html', message=reservation_json['detail'], redirect_url="/users/reservation"), reservation.status_code)
 
     if current_user.id != reservation_json['booker_id']:
         return render_template('error.html', message="You are not the booker for this reservation", redirect_url="/")
@@ -223,7 +225,7 @@ def deletereservation(reservation_id):
     if resp.status_code == 200:
         return reservation_list()
     else:
-        return make_response(render_template('error.html', message=old_res['detail'], redirect_url="/users/reservation_list"), resp.status_code)
+        return make_response(render_template('error.html', message=old_res['detail'], redirect_url="/users/reservation"), resp.status_code)
 
 @users.route('/users/editreservation/<reservation_id>', methods=['POST'])
 def editreservation_post(reservation_id):
@@ -245,8 +247,6 @@ def editreservation_post(reservation_id):
             date = str(request.form['date']),
             time = str(request.form['time'])
         )
-
-        # TODO controllare che quando ho messo più email che posti, non è successo nulla
 
         try:
 
@@ -289,7 +289,7 @@ def editreservation(reservation_id):
         return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
     if response.status_code != 200:
-        return make_response(render_template('error.html', message=old_res['detail'], redirect_url="/users/reservation_list"), response.status_code)
+        return make_response(render_template('error.html', message=old_res['detail'], redirect_url="/users/reservation"), response.status_code)
     else: 
         seat_query = old_res['seats'] # get all the seats of the reservation (booker and guests if any)      
 

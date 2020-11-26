@@ -1,7 +1,7 @@
 FROM python:3.8-alpine
 
-ADD . /monolith     
-WORKDIR /monolith
+ADD . /api
+WORKDIR /api
 
 RUN apk update && apk add postgresql-dev gcc python3-dev musl-dev
 RUN pip install -r requirements.txt

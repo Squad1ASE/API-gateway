@@ -2,14 +2,14 @@ from flask import Blueprint, render_template, redirect, request, make_response
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 
-from monolith.database import db, User
-from monolith.forms import LoginForm
+from database import db, User
+from forms import LoginForm
 import requests
 from datetime import datetime
-
+import os
 auth = Blueprint('auth', __name__)
 
-USER_SERVICE = 'http://127.0.0.1:5060/'
+USER_SERVICE = os.environ['USER_SERVICE']
 
 
 @auth.route('/login', methods=['GET', 'POST'])
@@ -27,8 +27,11 @@ def login():
                 password=form.data['password']
             )
 
-            reply = requests.post(USER_SERVICE+'login', json=login_dict)
-            reply_json = reply.json()
+            try:
+                reply = requests.post(USER_SERVICE+'login', json=login_dict)
+                reply_json = reply.json()
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/")
 
             if reply.status_code == 200:
                 user = User()

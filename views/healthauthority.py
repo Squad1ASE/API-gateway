@@ -1,17 +1,19 @@
 from flask import Blueprint, redirect, render_template, request, make_response, url_for
-from monolith.database import db, User, Quarantine, Notification
-from monolith.auth import admin_required
-from monolith.forms import GetPatientInformationsForm
+from database import db, User, Quarantine, Notification
+from auth import admin_required
+from forms import GetPatientInformationsForm
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
 import datetime
 from datetime import timedelta
 from sqlalchemy import or_, and_
 import requests
+import os
 
 healthauthority = Blueprint('healthauthority', __name__)
 
-USER_SERVICE = 'http://127.0.0.1:5060/'
+#USER_SERVICE = 'http://127.0.0.1:5060/'
+USER_SERVICE = os.environ['USER_SERVICE']
 REQUEST_TIMEOUT_SECONDS = 2
 
 @healthauthority.route('/patient', methods=['GET'])

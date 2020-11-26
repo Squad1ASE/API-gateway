@@ -1,14 +1,14 @@
 import json
 
 from flask import Blueprint, redirect, render_template, request, make_response
-from monolith.database import db, User, Quarantine, Notification
-from monolith.auth import admin_required, current_user
+from database import db, User
+from auth import admin_required, current_user
 from flask_login import (current_user, login_user, logout_user,
                          login_required)
-from monolith.forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
+from forms import (DishForm, UserForm, RestaurantForm, ReservationPeopleEmail, 
                             SubReservationPeopleEmail, ReservationRequest, RestaurantSearch, 
                             EditRestaurantForm, ReviewForm )
-from monolith.views import auth
+from views import auth
 import datetime
 from flask_wtf import FlaskForm
 import wtforms as f
@@ -25,10 +25,12 @@ import os
 
 restaurants = Blueprint('restaurants', __name__)
 
-RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
-RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
-USER_SERVICE = 'http://127.0.0.1:5060/'
-#RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
+#RESTAURANT_SERVICE = "http://0.0.0.0:5070/"
+#RESERVATION_SERVICE = 'http://127.0.0.1:5100/'
+#USER_SERVICE = 'http://127.0.0.1:5060/'
+RESERVATION_SERVICE = os.environ['RESERVATION_SERVICE']
+USER_SERVICE = os.environ['USER_SERVICE']
+RESTAURANT_SERVICE = os.environ['RESTAURANT_SERVICE']
 REQUEST_TIMEOUT_SECONDS = 2
 
 def _check_working_days(form_working_days):
@@ -299,13 +301,13 @@ def create_reservation(restaurant_id):
         return make_response(redirect('/restaurants/'+str(restaurant_id)), 222)
     if form.validate_on_submit():
 
-        #TODO: controllo su data nel passato
-
         #weekday = form.date.data.weekday() + 1
         reservation_time = time.strptime(request.form['time'], '%H:%M')
         reservation_datetime_str = str(request.form['date']) + " " + str(request.form['time'])
         reservation_datetime = datetime.datetime.strptime(reservation_datetime_str, "%d/%m/%Y %H:%M")
         #reservation_datetime_str = str(reservation_datetime_str) + ' ' + str(reservation_time)
+        if reservation_datetime <= datetime.datetime.now():
+            return make_response(render_template('error.html', message="This reservation is in the past", redirect_url="/restaurants/<int:restaurant_id>"), 400)
         temp_dict = dict(
             booker_id = current_user.id,
             booker_email = current_user.email,
@@ -314,17 +316,16 @@ def create_reservation(restaurant_id):
             time = str(request.form['time']),
             places = form.guests.data
         )
-        #print(temp_dict)
-        res = requests.put(RESERVATION_SERVICE+str('reservations'), json=temp_dict)
+        try:
+            res = requests.put(RESERVATION_SERVICE+str('reservations'), json=temp_dict, timeout=REQUEST_TIMEOUT_SECONDS)
+            data_json = data.json()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            return render_template('error.html', message="Something gone wrong, try again later", redirect_url="/restaurants/"+str(restaurant_id))
+
         if res.status_code == 200:
             return make_response(render_template('error.html', message="Reservation has been placed", redirect_url="/"), 666)
         else:
-            if res.status_code == 400:
-                return make_response(render_template('error.html', message="Bad Request", redirect_url="/"), 400)
-            elif res.status_code == 500:
-                return make_response(render_template('error.html', message="Try again later", redirect_url="/"), 500)
-            else:
-                return make_response(render_template('error.html', message="Error", redirect_url="/"), 500)
+            return make_response(render_template('error.html', message=data_json['detail'], redirect_url="/restaurants/"+str(restaurant_id)), data.status_code)
 
 @restaurants.route('/restaurants/<int:restaurant_id>', methods=['GET'])
 @login_required

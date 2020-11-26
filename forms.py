@@ -3,7 +3,7 @@ import wtforms as f
 from wtforms import Form, BooleanField
 from wtforms.validators import DataRequired, Length, Email, NumberRange, ValidationError
 import ast
-from monolith.static.enum import CUISINE_TYPES, WEEK_DAYS
+from static.enum import CUISINE_TYPES, WEEK_DAYS
 import time
 
 
